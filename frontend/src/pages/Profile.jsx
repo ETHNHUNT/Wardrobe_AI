@@ -68,11 +68,17 @@ export default function Profile() {
     e.preventDefault()
     setSaving(true)
     try {
-      // Convert numeric strings to floats; keep strings as-is
+      // Convert numeric strings to floats; omit invalid values so backend keeps prior value
       const payload = { ...form }
       for (const field of MEASUREMENT_FIELDS) {
-        if (payload[field.key] !== '') {
-          payload[field.key] = parseFloat(payload[field.key]) || 0
+        const rawValue = payload[field.key]
+        if (rawValue !== '') {
+          const parsed = parseFloat(rawValue)
+          if (Number.isFinite(parsed)) {
+            payload[field.key] = parsed
+          } else {
+            delete payload[field.key]
+          }
         }
       }
       await axios.post(`${API_URL}/profile`, payload)
