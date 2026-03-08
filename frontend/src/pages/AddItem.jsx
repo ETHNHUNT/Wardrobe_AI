@@ -1,58 +1,54 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import { Camera, Upload, CheckCircle2, RotateCcw, Barcode } from 'lucide-react'
 import axios from 'axios'
 import BarcodeScanner from '../components/BarcodeScanner'
 
 const API_URL = import.meta.env.VITE_API_URL
 
 const CATEGORIES = ['tshirt', 'shirt', 'polo', 'jacket', 'hoodie', 'sweater', 'jeans', 'chinos', 'trousers', 'shorts', 'shoes', 'sneakers', 'boots', 'formal_shoes', 'accessory', 'other']
-const FIT_TYPES = ['slim', 'regular', 'oversized', 'relaxed']
-const OCCASIONS = ['casual', 'work', 'formal', 'sport', 'outdoor']
-const SEASONS = ['spring', 'summer', 'fall', 'winter']
+const FIT_TYPES  = ['slim', 'regular', 'oversized', 'relaxed']
+const OCCASIONS  = ['casual', 'work', 'formal', 'sport', 'outdoor']
+const SEASONS    = ['spring', 'summer', 'fall', 'winter']
+
+const INPUT_STYLE = {
+  backgroundColor: 'var(--bg-elevated)',
+  color: 'var(--text-primary)',
+  border: '1px solid rgba(255,255,255,0.08)',
+}
 
 // State machine: idle → previewing → uploading → done | manual_form
 export default function AddItem() {
   const navigate = useNavigate()
-  const fileInputRef = useRef(null)
-  const streamRef = useRef(null)
-  const videoRef = useRef(null)
-  const canvasRef = useRef(null)
+  const fileInputRef  = useRef(null)
+  const streamRef     = useRef(null)
+  const videoRef      = useRef(null)
+  const canvasRef     = useRef(null)
   const previewUrlRef = useRef(null)
 
-  const [phase, setPhase] = useState('idle') // idle | barcode | camera | previewing | uploading | done | manual_form
-  const [barcodeInfo, setBarcodeInfo] = useState(null) // pre-filled from barcode lookup
-  const [preview, setPreview] = useState(null)
-  const [photoFile, setPhotoFile] = useState(null)
-  const [savedItem, setSavedItem] = useState(null)
-  const [error, setError] = useState('')
+  const [phase, setPhase]             = useState('idle')
+  const [barcodeInfo, setBarcodeInfo] = useState(null)
+  const [preview, setPreview]         = useState(null)
+  const [photoFile, setPhotoFile]     = useState(null)
+  const [savedItem, setSavedItem]     = useState(null)
+  const [error, setError]             = useState('')
 
-  // Manual form state
   const [manualForm, setManualForm] = useState({
-    category: '',
-    fit_type: '',
-    brand: '',
-    size_label: '',
-    colors: '',
-    notes: '',
-    occasions: [],
-    seasons: [],
+    category: '', fit_type: '', brand: '', size_label: '',
+    colors: '', notes: '', occasions: [], seasons: [],
   })
   const [savingManual, setSavingManual] = useState(false)
 
-  // Stop camera and revoke any object URL on unmount
   useEffect(() => {
     return () => {
       stopCamera()
-      if (previewUrlRef.current) {
-        URL.revokeObjectURL(previewUrlRef.current)
-      }
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
     }
   }, [])
 
   function setPreviewUrl(url) {
-    if (previewUrlRef.current) {
-      URL.revokeObjectURL(previewUrlRef.current)
-    }
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
     previewUrlRef.current = url
     setPreview(url)
   }
@@ -60,16 +56,11 @@ export default function AddItem() {
   // ── Camera ──────────────────────────────────────────────────────────────
   async function startCamera() {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
-      })
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
       streamRef.current = stream
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-      }
+      if (videoRef.current) videoRef.current.srcObject = stream
       setPhase('camera')
     } catch {
-      // Fallback to file picker if camera not available
       fileInputRef.current?.click()
     }
   }
@@ -80,17 +71,14 @@ export default function AddItem() {
   }
 
   function capturePhoto() {
-    const video = videoRef.current
+    const video  = videoRef.current
     const canvas = canvasRef.current
     if (!video || !canvas) return
-    canvas.width = video.videoWidth
+    canvas.width  = video.videoWidth
     canvas.height = video.videoHeight
     canvas.getContext('2d').drawImage(video, 0, 0)
     canvas.toBlob((blob) => {
-      if (!blob) {
-        setError('Failed to capture photo. Please try again.')
-        return
-      }
+      if (!blob) { setError('Failed to capture photo. Please try again.'); return }
       const file = new File([blob], 'capture.jpg', { type: 'image/jpeg' })
       stopCamera()
       setPhotoFile(file)
@@ -115,30 +103,27 @@ export default function AddItem() {
     setPhase('idle')
   }
 
-  // ── Barcode scanning ────────────────────────────────────────────────────
+  // ── Barcode ──────────────────────────────────────────────────────────────
   async function handleBarcodeScanned(upc) {
     setPhase('idle')
     setError('')
     try {
       const { data } = await axios.get(`${API_URL}/items/barcode/${upc}`)
       setBarcodeInfo(data)
-      // Pre-fill manual form with barcode data, then prompt user to take a photo
       setManualForm((prev) => ({
         ...prev,
-        brand: data.brand ?? '',
-        size_label: data.size ?? '',
-        colors: data.color ?? '',
-        notes: data.title ?? '',
+        brand:      data.brand ?? '',
+        size_label: data.size  ?? '',
+        colors:     data.color ?? '',
+        notes:      data.title ?? '',
       }))
     } catch {
-      // Product not in UPCItemDB — that's okay, just proceed with empty form
       setBarcodeInfo({})
     }
-    // After barcode, prompt user to take/upload the photo
     setPhase('idle')
   }
 
-  // ── Upload & AI tagging ─────────────────────────────────────────────────
+  // ── Upload ───────────────────────────────────────────────────────────────
   async function uploadPhoto() {
     if (!photoFile) return
     setPhase('uploading')
@@ -146,13 +131,12 @@ export default function AddItem() {
 
     const formData = new FormData()
     formData.append('photo', photoFile)
-    // Include any barcode-pre-filled metadata
     if (barcodeInfo && Object.keys(barcodeInfo).length > 0) {
       const meta = {}
-      if (barcodeInfo.brand) meta.brand = barcodeInfo.brand
-      if (barcodeInfo.size) meta.size_label = barcodeInfo.size
-      if (barcodeInfo.color) meta.colors = [barcodeInfo.color]
-      if (barcodeInfo.title) meta.notes = barcodeInfo.title
+      if (barcodeInfo.brand) meta.brand      = barcodeInfo.brand
+      if (barcodeInfo.size)  meta.size_label = barcodeInfo.size
+      if (barcodeInfo.color) meta.colors     = [barcodeInfo.color]
+      if (barcodeInfo.title) meta.notes      = barcodeInfo.title
       formData.append('metadata', JSON.stringify(meta))
     }
 
@@ -163,21 +147,20 @@ export default function AddItem() {
       setSavedItem(data)
 
       if (!data.ai_tagged || data.category === 'unknown') {
-        // Pre-fill manual form with whatever AI returned
         setManualForm((prev) => ({
           ...prev,
-          category: data.category !== 'unknown' ? data.category : '',
-          fit_type: data.fit_type ?? '',
-          brand: data.brand ?? '',
+          category:   data.category !== 'unknown' ? data.category : '',
+          fit_type:   data.fit_type   ?? '',
+          brand:      data.brand      ?? '',
           size_label: data.size_label ?? '',
-          occasions: tryParseArray(data.occasions),
-          seasons: tryParseArray(data.seasons),
+          occasions:  tryParseArray(data.occasions),
+          seasons:    tryParseArray(data.seasons),
         }))
         setPhase('manual_form')
       } else {
         setPhase('done')
       }
-    } catch (err) {
+    } catch {
       setError('Upload failed. Make sure the backend is running.')
       setPhase('previewing')
     }
@@ -187,14 +170,11 @@ export default function AddItem() {
     try { return JSON.parse(str) } catch { return [] }
   }
 
-  // ── Manual form ─────────────────────────────────────────────────────────
+  // ── Manual form ──────────────────────────────────────────────────────────
   function toggleArrayItem(key, value) {
     setManualForm((prev) => {
       const arr = prev[key]
-      return {
-        ...prev,
-        [key]: arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value],
-      }
+      return { ...prev, [key]: arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value] }
     })
   }
 
@@ -204,47 +184,70 @@ export default function AddItem() {
     setSavingManual(true)
     try {
       const payload = {
-        category: manualForm.category || 'other',
-        fit_type: manualForm.fit_type || null,
-        brand: manualForm.brand || null,
+        category:   manualForm.category   || 'other',
+        fit_type:   manualForm.fit_type   || null,
+        brand:      manualForm.brand      || null,
         size_label: manualForm.size_label || null,
-        notes: manualForm.notes || null,
-        colors: JSON.stringify(manualForm.colors ? manualForm.colors.split(',').map((s) => s.trim()) : []),
-        occasions: JSON.stringify(manualForm.occasions),
-        seasons: JSON.stringify(manualForm.seasons),
+        notes:      manualForm.notes      || null,
+        colors:     JSON.stringify(manualForm.colors ? manualForm.colors.split(',').map((s) => s.trim()) : []),
+        occasions:  JSON.stringify(manualForm.occasions),
+        seasons:    JSON.stringify(manualForm.seasons),
       }
       await axios.put(`${API_URL}/items/${savedItem.id}`, payload)
       setPhase('done')
-    } catch (err) {
+    } catch {
       setError('Failed to save tags. Try again.')
     } finally {
       setSavingManual(false)
     }
   }
 
-  // ── Render ───────────────────────────────────────────────────────────────
+  // ── Render phases ─────────────────────────────────────────────────────────
+
   if (phase === 'barcode') {
     return <BarcodeScanner onScan={handleBarcodeScanned} onClose={() => setPhase('idle')} />
   }
+
   if (phase === 'done') {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 pb-20">
-        <div className="text-6xl mb-4">✅</div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Item added!</h2>
-        <p className="text-gray-500 text-sm mb-8">Your clothing has been saved to your wardrobe.</p>
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-20" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <motion.div
+          initial={{ scale: 0.5, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 280, damping: 20 }}
+          className="mb-6"
+        >
+          <CheckCircle2 size={64} strokeWidth={1.25} style={{ color: 'var(--accent)' }} />
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.4 }}
+          className="text-center mb-10"
+        >
+          <h2 className="text-2xl font-light mb-2" style={{ color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+            Item Added
+          </h2>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            Your clothing has been saved to your wardrobe.
+          </p>
+        </motion.div>
         <div className="flex gap-3 w-full max-w-sm">
           <button
             onClick={() => { setPhase('idle'); setPreview(null); setPhotoFile(null); setSavedItem(null) }}
-            className="flex-1 border border-indigo-600 text-indigo-600 font-semibold py-3 rounded-xl"
+            className="flex-1 py-3.5 rounded-2xl text-sm font-medium transition-colors duration-150"
+            style={{ border: '1px solid rgba(200,169,126,0.4)', color: 'var(--accent)' }}
           >
             Add Another
           </button>
-          <button
+          <motion.button
             onClick={() => navigate('/')}
-            className="flex-1 bg-indigo-600 text-white font-semibold py-3 rounded-xl"
+            whileTap={{ scale: 0.97 }}
+            className="flex-1 py-3.5 rounded-2xl text-sm font-semibold"
+            style={{ background: 'linear-gradient(135deg, #C8A97E 0%, #9A7A52 100%)', color: '#0C0C0C' }}
           >
             View Wardrobe
-          </button>
+          </motion.button>
         </div>
       </div>
     )
@@ -252,155 +255,143 @@ export default function AddItem() {
 
   if (phase === 'uploading') {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 pb-20">
-        <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-6" />
-        <h2 className="text-lg font-semibold text-gray-800 mb-1">AI is analyzing your item…</h2>
-        <p className="text-sm text-gray-400 text-center">First run may take up to 30 seconds while the model loads.</p>
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-20" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        {/* Concentric pulsing rings */}
+        <div className="relative flex items-center justify-center mb-10" style={{ width: 140, height: 140 }}>
+          <div className="absolute rounded-full ring-pulse-3" style={{ width: 132, height: 132, border: '1px solid rgba(200,169,126,0.1)' }} />
+          <div className="absolute rounded-full ring-pulse-2" style={{ width: 96, height: 96, border: '1px solid rgba(200,169,126,0.2)' }} />
+          <div className="absolute rounded-full ring-pulse-1" style={{ width: 60, height: 60, border: '1px solid rgba(200,169,126,0.35)' }} />
+          <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--accent-soft)', border: '1px solid rgba(200,169,126,0.4)' }}>
+            <Camera size={16} style={{ color: 'var(--accent)' }} />
+          </div>
+        </div>
+        <p className="text-xs tracking-[0.3em] uppercase mb-2" style={{ color: 'var(--accent)' }}>
+          Analyzing
+        </p>
+        <p className="text-sm text-center max-w-xs" style={{ color: 'var(--text-muted)' }}>
+          AI is tagging your item. First run may take up to 30 seconds.
+        </p>
       </div>
     )
   }
 
   if (phase === 'manual_form') {
     return (
-      <div className="min-h-screen bg-gray-50 pb-24">
-        <div className="bg-white border-b border-gray-200 px-4 py-4">
-          <h1 className="text-xl font-bold text-gray-900">Tag Your Item</h1>
-          <p className="text-sm text-gray-400 mt-0.5">AI couldn't auto-tag this photo. Fill in the details below.</p>
+      <div className="min-h-screen pb-24" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <div className="px-5 pt-10 pb-5">
+          <p className="text-xs tracking-[0.25em] uppercase mb-1.5" style={{ color: 'var(--accent)' }}>Manual Tag</p>
+          <h1 className="text-2xl font-light" style={{ color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+            Tag Your Item
+          </h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+            AI couldn't auto-tag this photo. Fill in the details below.
+          </p>
         </div>
 
         {preview && (
-          <div className="px-4 pt-4">
-            <img src={preview} alt="Uploaded item" className="w-32 h-40 object-cover rounded-xl shadow-sm mx-auto" />
+          <div className="px-5 pb-5">
+            <img src={preview} alt="Uploaded item" className="w-28 h-36 object-cover rounded-2xl mx-auto" style={{ border: '1px solid rgba(255,255,255,0.07)', boxShadow: '0 12px 32px rgba(0,0,0,0.5)' }} />
           </div>
         )}
 
-        <form onSubmit={saveManualTags} className="px-4 py-4 space-y-5">
-          {/* Category */}
+        <form onSubmit={saveManualTags} className="px-5 pb-8 space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
-            <select
-              value={manualForm.category}
+            <label className="block text-xs tracking-wider uppercase mb-2" style={{ color: 'var(--accent)' }}>Category *</label>
+            <select value={manualForm.category}
               onChange={(e) => setManualForm((p) => ({ ...p, category: e.target.value }))}
-              required
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 bg-white text-gray-900"
+              required className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none" style={INPUT_STYLE}
             >
               <option value="">Select category…</option>
               {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
 
-          {/* Fit type */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Fit Type</label>
-            <select
-              value={manualForm.fit_type}
+            <label className="block text-xs tracking-wider uppercase mb-2" style={{ color: 'var(--text-muted)' }}>Fit Type</label>
+            <select value={manualForm.fit_type}
               onChange={(e) => setManualForm((p) => ({ ...p, fit_type: e.target.value }))}
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 bg-white text-gray-900"
+              className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none" style={INPUT_STYLE}
             >
               <option value="">Select fit…</option>
               {FIT_TYPES.map((f) => <option key={f} value={f}>{f}</option>)}
             </select>
           </div>
 
-          {/* Brand & size */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Brand</label>
-              <input
-                type="text"
-                value={manualForm.brand}
+              <label className="block text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Brand</label>
+              <input type="text" value={manualForm.brand}
                 onChange={(e) => setManualForm((p) => ({ ...p, brand: e.target.value }))}
-                placeholder="Zara, H&M…"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm bg-white text-gray-900"
-              />
+                placeholder="Zara, H&M…" className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none" style={INPUT_STYLE} />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Size</label>
-              <input
-                type="text"
-                value={manualForm.size_label}
+              <label className="block text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Size</label>
+              <input type="text" value={manualForm.size_label}
                 onChange={(e) => setManualForm((p) => ({ ...p, size_label: e.target.value }))}
-                placeholder="M, L, 32…"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm bg-white text-gray-900"
-              />
+                placeholder="M, L, 32…" className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none" style={INPUT_STYLE} />
             </div>
           </div>
 
-          {/* Colors */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Colors</label>
-            <input
-              type="text"
-              value={manualForm.colors}
+            <label className="block text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Colors</label>
+            <input type="text" value={manualForm.colors}
               onChange={(e) => setManualForm((p) => ({ ...p, colors: e.target.value }))}
               placeholder="navy, white (comma-separated)"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-white text-gray-900"
-            />
+              className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none" style={INPUT_STYLE} />
           </div>
 
-          {/* Occasions */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Occasions</label>
+            <label className="block text-xs uppercase tracking-wider mb-2.5" style={{ color: 'var(--text-muted)' }}>Occasions</label>
             <div className="flex flex-wrap gap-2">
-              {OCCASIONS.map((o) => (
-                <button
-                  key={o}
-                  type="button"
-                  onClick={() => toggleArrayItem('occasions', o)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                    manualForm.occasions.includes(o)
-                      ? 'bg-indigo-600 text-white border-indigo-600'
-                      : 'bg-white text-gray-600 border-gray-200'
-                  }`}
-                >
-                  {o}
-                </button>
-              ))}
+              {OCCASIONS.map((o) => {
+                const active = manualForm.occasions.includes(o)
+                return (
+                  <button key={o} type="button" onClick={() => toggleArrayItem('occasions', o)}
+                    className="px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-150"
+                    style={active
+                      ? { backgroundColor: 'var(--accent)', color: '#0C0C0C', fontWeight: 600 }
+                      : { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)', border: '1px solid var(--border)' }
+                    }
+                  >{o}</button>
+                )
+              })}
             </div>
           </div>
 
-          {/* Seasons */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Seasons</label>
+            <label className="block text-xs uppercase tracking-wider mb-2.5" style={{ color: 'var(--text-muted)' }}>Seasons</label>
             <div className="flex flex-wrap gap-2">
-              {SEASONS.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => toggleArrayItem('seasons', s)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                    manualForm.seasons.includes(s)
-                      ? 'bg-indigo-600 text-white border-indigo-600'
-                      : 'bg-white text-gray-600 border-gray-200'
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
+              {SEASONS.map((s) => {
+                const active = manualForm.seasons.includes(s)
+                return (
+                  <button key={s} type="button" onClick={() => toggleArrayItem('seasons', s)}
+                    className="px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-150"
+                    style={active
+                      ? { backgroundColor: 'var(--accent)', color: '#0C0C0C', fontWeight: 600 }
+                      : { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)', border: '1px solid var(--border)' }
+                    }
+                  >{s}</button>
+                )
+              })}
             </div>
           </div>
 
-          {/* Notes */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-            <textarea
-              value={manualForm.notes}
+            <label className="block text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Notes</label>
+            <textarea value={manualForm.notes}
               onChange={(e) => setManualForm((p) => ({ ...p, notes: e.target.value }))}
-              rows={2}
-              placeholder="Any notes about this item…"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-white text-gray-900"
-            />
+              rows={2} placeholder="Any notes about this item…"
+              className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none" style={INPUT_STYLE} />
           </div>
 
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {error && <p className="text-sm" style={{ color: 'var(--danger)' }}>{error}</p>}
 
-          <button
-            type="submit"
-            disabled={savingManual}
-            className="w-full bg-indigo-600 text-white font-semibold py-3.5 rounded-xl disabled:opacity-60"
+          <motion.button type="submit" disabled={savingManual} whileTap={{ scale: 0.97 }}
+            className="w-full py-4 rounded-2xl text-sm font-semibold disabled:opacity-50"
+            style={{ background: 'linear-gradient(135deg, #C8A97E 0%, #9A7A52 100%)', color: '#0C0C0C' }}
           >
             {savingManual ? 'Saving…' : 'Save Item'}
-          </button>
+          </motion.button>
         </form>
       </div>
     )
@@ -409,25 +400,21 @@ export default function AddItem() {
   if (phase === 'camera') {
     return (
       <div className="min-h-screen bg-black flex flex-col pb-20">
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          className="flex-1 w-full object-cover"
-        />
+        <video ref={videoRef} autoPlay playsInline className="flex-1 w-full object-cover" />
         <canvas ref={canvasRef} className="hidden" />
         <div className="flex items-center justify-around p-6 bg-black">
-          <button
-            onClick={() => { stopCamera(); setPhase('idle') }}
-            className="text-white text-sm"
-          >
+          <button onClick={() => { stopCamera(); setPhase('idle') }} className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>
             Cancel
           </button>
-          <button
+          <motion.button
             onClick={capturePhoto}
-            className="w-16 h-16 rounded-full border-4 border-white bg-white/20 hover:bg-white/40 transition-colors"
-          />
-          <div className="w-16" />
+            whileTap={{ scale: 0.92 }}
+            className="w-16 h-16 rounded-full flex items-center justify-center"
+            style={{ border: '3px solid white', backgroundColor: 'rgba(255,255,255,0.15)' }}
+          >
+            <div className="w-11 h-11 rounded-full bg-white" />
+          </motion.button>
+          <div className="w-14" />
         </div>
       </div>
     )
@@ -435,87 +422,85 @@ export default function AddItem() {
 
   if (phase === 'previewing') {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 pb-20">
-        <img src={preview} alt="Preview" className="max-h-96 rounded-2xl shadow-md object-contain mb-6" />
-        {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-20" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <motion.img
+          initial={{ opacity: 0, scale: 0.94 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+          src={preview} alt="Preview"
+          className="max-h-96 rounded-2xl object-contain mb-6"
+          style={{ boxShadow: '0 24px 64px rgba(0,0,0,0.65)' }}
+        />
+        {error && <p className="text-sm mb-4" style={{ color: 'var(--danger)' }}>{error}</p>}
         <div className="flex gap-3 w-full max-w-sm">
-          <button onClick={retake} className="flex-1 border border-gray-300 text-gray-700 font-semibold py-3 rounded-xl">
+          <button onClick={retake}
+            className="flex-1 py-3.5 rounded-2xl text-sm font-medium flex items-center justify-center gap-2"
+            style={{ border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-muted)' }}
+          >
+            <RotateCcw size={14} />
             Retake
           </button>
-          <button onClick={uploadPhoto} className="flex-1 bg-indigo-600 text-white font-semibold py-3 rounded-xl">
+          <motion.button onClick={uploadPhoto} whileTap={{ scale: 0.97 }}
+            className="flex-1 py-3.5 rounded-2xl text-sm font-semibold"
+            style={{ background: 'linear-gradient(135deg, #C8A97E 0%, #9A7A52 100%)', color: '#0C0C0C' }}
+          >
             Use Photo
-          </button>
+          </motion.button>
         </div>
       </div>
     )
   }
 
-  // idle
+  // ── Idle ──────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      <div className="bg-white border-b border-gray-200 px-4 py-4">
-        <h1 className="text-xl font-bold text-gray-900">Add Item</h1>
-        <p className="text-sm text-gray-400 mt-0.5">Take a photo or upload from your gallery</p>
+    <div className="min-h-screen pb-20" style={{ backgroundColor: 'var(--bg-primary)' }}>
+      <div className="px-5 pt-10 pb-6">
+        <p className="text-xs tracking-[0.28em] uppercase mb-2" style={{ color: 'var(--accent)' }}>Add to Wardrobe</p>
+        <h1 className="text-2xl font-light" style={{ color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>New Item</h1>
       </div>
 
-      <div className="flex flex-col items-center justify-center px-4 py-12 gap-4">
-        {/* Barcode info banner */}
+      <div className="px-5 flex flex-col gap-3">
         {barcodeInfo && Object.keys(barcodeInfo).length > 0 && (
-          <div className="w-full max-w-sm bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-            <p className="text-xs font-semibold text-green-700 mb-0.5">Barcode scanned</p>
-            {barcodeInfo.title && <p className="text-sm text-green-800 truncate">{barcodeInfo.title}</p>}
-            {barcodeInfo.brand && <p className="text-xs text-green-600">{barcodeInfo.brand}{barcodeInfo.size ? ` · ${barcodeInfo.size}` : ''}</p>}
-            <p className="text-xs text-green-500 mt-1">Now take a photo of the item below</p>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="w-full rounded-2xl px-4 py-3"
+            style={{ backgroundColor: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.18)' }}
+          >
+            <p className="text-xs font-semibold mb-0.5" style={{ color: '#4ADE80' }}>Barcode Scanned</p>
+            {barcodeInfo.title && <p className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>{barcodeInfo.title}</p>}
+            {barcodeInfo.brand && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{barcodeInfo.brand}{barcodeInfo.size ? ` · ${barcodeInfo.size}` : ''}</p>}
+            <p className="text-xs mt-1" style={{ color: 'rgba(74,222,128,0.6)' }}>Now take a photo of the item below</p>
+          </motion.div>
         )}
 
-        {/* Camera button */}
-        <button
-          onClick={startCamera}
-          className="w-full max-w-sm bg-indigo-600 text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-indigo-700 active:bg-indigo-800 transition-colors"
+        <motion.button onClick={startCamera} whileTap={{ scale: 0.97 }}
+          className="w-full py-5 rounded-2xl flex items-center justify-center gap-3 text-sm font-semibold"
+          style={{ background: 'linear-gradient(135deg, #C8A97E 0%, #9A7A52 100%)', color: '#0C0C0C' }}
         >
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
+          <Camera size={20} strokeWidth={2} />
           Take Photo
-        </button>
+        </motion.button>
 
-        {/* File upload button */}
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="w-full max-w-sm border-2 border-dashed border-gray-300 text-gray-600 font-semibold py-4 rounded-2xl flex items-center justify-center gap-3 hover:border-indigo-400 hover:text-indigo-600 transition-colors"
+        <motion.button onClick={() => fileInputRef.current?.click()} whileTap={{ scale: 0.97 }}
+          className="w-full py-4 rounded-2xl flex items-center justify-center gap-3 text-sm font-medium"
+          style={{ border: '1.5px dashed rgba(255,255,255,0.14)', color: 'var(--text-muted)' }}
         >
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-          </svg>
+          <Upload size={18} strokeWidth={1.75} />
           Upload from Gallery
-        </button>
+        </motion.button>
 
-        {/* Barcode scan button */}
-        <button
-          onClick={() => setPhase('barcode')}
-          className="w-full max-w-sm border-2 border-gray-200 text-gray-600 font-semibold py-4 rounded-2xl flex items-center justify-center gap-3 hover:border-indigo-400 hover:text-indigo-600 transition-colors"
+        <motion.button onClick={() => setPhase('barcode')} whileTap={{ scale: 0.97 }}
+          className="w-full py-4 rounded-2xl flex items-center justify-center gap-3 text-sm font-medium"
+          style={{ border: '1px solid rgba(255,255,255,0.07)', color: 'var(--text-muted)' }}
         >
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M4 6h1M4 10h1M4 14h1M4 18h1M9 6v12M12 6v12M15 6v12M19 6h1M19 10h1M19 14h1M19 18h1" />
-          </svg>
+          <Barcode size={18} strokeWidth={1.75} />
           Scan Barcode
-        </button>
+        </motion.button>
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleFileSelect}
-        />
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
 
-        <p className="text-xs text-gray-400 text-center mt-2">
+        <p className="text-xs text-center mt-2" style={{ color: 'var(--text-muted)', opacity: 0.55 }}>
           AI will automatically tag your item.<br />
           First scan may take up to 30 seconds.
         </p>

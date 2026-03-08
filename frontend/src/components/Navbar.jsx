@@ -1,72 +1,76 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Shirt, Plus, Layers, ShoppingBag, User } from 'lucide-react'
 
 const tabs = [
-  {
-    to: '/',
-    label: 'Wardrobe',
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-      </svg>
-    ),
-  },
-  {
-    to: '/add',
-    label: 'Add',
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-      </svg>
-    ),
-  },
-  {
-    to: '/outfits',
-    label: 'Outfits',
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-      </svg>
-    ),
-  },
-  {
-    to: '/shop',
-    label: 'Shop',
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-      </svg>
-    ),
-  },
-  {
-    to: '/profile',
-    label: 'Profile',
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-      </svg>
-    ),
-  },
+  { to: '/',        label: 'Wardrobe', Icon: Shirt       },
+  { to: '/add',     label: 'Add',      Icon: Plus        },
+  { to: '/outfits', label: 'Outfits',  Icon: Layers      },
+  { to: '/shop',    label: 'Shop',     Icon: ShoppingBag },
+  { to: '/profile', label: 'Profile',  Icon: User        },
 ]
 
 export default function Navbar() {
+  const location = useLocation()
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
-      <div className="flex justify-around items-center h-16" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        {tabs.map((tab) => (
-          <NavLink
-            key={tab.to}
-            to={tab.to}
-            end={tab.to === '/'}
-            className={({ isActive }) =>
-              `flex flex-col items-center gap-0.5 px-3 py-2 text-xs font-medium transition-colors ${
-                isActive ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'
-              }`
-            }
-          >
-            {tab.icon}
-            <span>{tab.label}</span>
-          </NavLink>
-        ))}
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50"
+      style={{
+        background: 'rgba(8, 8, 8, 0.72)',
+        backdropFilter: 'blur(20px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+        borderTop: '1px solid rgba(255,255,255,0.07)',
+      }}
+    >
+      <div
+        className="flex justify-around items-center h-16"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
+        {tabs.map(({ to, label, Icon }) => {
+          const isActive =
+            to === '/'
+              ? location.pathname === '/'
+              : location.pathname.startsWith(to)
+
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              end={to === '/'}
+              className="relative flex flex-col items-center gap-0.5 px-4 py-2 text-[10px] font-medium tracking-wider uppercase"
+              style={{ color: isActive ? 'var(--accent)' : 'var(--text-muted)' }}
+            >
+              <motion.div
+                whileTap={{ scale: 0.88 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+                className="flex flex-col items-center gap-0.5"
+              >
+                <Icon
+                  size={22}
+                  strokeWidth={isActive ? 1.75 : 1.4}
+                  className="transition-all duration-200"
+                />
+                <span className="transition-all duration-200">{label}</span>
+              </motion.div>
+
+              {/* Animated gold dot indicator */}
+              <AnimatePresence>
+                {isActive && (
+                  <motion.span
+                    layoutId="nav-dot"
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.5 }}
+                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                    className="absolute -bottom-1 w-1 h-1 rounded-full"
+                    style={{ backgroundColor: 'var(--accent)' }}
+                  />
+                )}
+              </AnimatePresence>
+            </NavLink>
+          )
+        })}
       </div>
     </nav>
   )
