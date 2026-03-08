@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Sparkles, Sun } from 'lucide-react'
 import axios from 'axios'
 import OutfitCard from '../components/OutfitCard'
 
 const API_URL = import.meta.env.VITE_API_URL
 const OCCASIONS = ['casual', 'work', 'formal', 'sport', 'outdoor']
-const SEASONS = ['spring', 'summer', 'fall', 'winter']
+const SEASONS   = ['spring', 'summer', 'fall', 'winter']
 
 function inferCurrentSeason() {
   const m = new Date().getMonth() + 1
@@ -14,16 +16,19 @@ function inferCurrentSeason() {
   return 'winter'
 }
 
+const PILL_ACTIVE = { backgroundColor: 'var(--accent)', color: '#0C0C0C', fontWeight: 600 }
+const PILL_IDLE   = { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)', border: '1px solid var(--border)' }
+
 export default function OutfitBuilder() {
-  const [tab, setTab] = useState('generate')
-  const [occasion, setOccasion] = useState('casual')
-  const [season, setSeason] = useState(inferCurrentSeason)
+  const [tab, setTab]               = useState('generate')
+  const [occasion, setOccasion]     = useState('casual')
+  const [season, setSeason]         = useState(inferCurrentSeason)
   const [suggestions, setSuggestions] = useState([])
   const [savedOutfits, setSavedOutfits] = useState([])
   const [generating, setGenerating] = useState(false)
   const [loadingSaved, setLoadingSaved] = useState(false)
   const [todayLoading, setTodayLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError]           = useState('')
 
   useEffect(() => {
     if (tab === 'saved') fetchSaved()
@@ -34,7 +39,7 @@ export default function OutfitBuilder() {
     try {
       const params = {}
       if (occasion) params.occasion = occasion
-      if (season) params.season = season
+      if (season)   params.season   = season
       const { data } = await axios.get(`${API_URL}/outfits`, { params })
       setSavedOutfits(data)
     } catch {
@@ -68,10 +73,7 @@ export default function OutfitBuilder() {
     setError('')
     try {
       const todaySeason = inferCurrentSeason()
-      const { data } = await axios.post(`${API_URL}/outfits/generate`, {
-        occasion: 'casual',
-        season: todaySeason,
-      })
+      const { data } = await axios.post(`${API_URL}/outfits/generate`, { occasion: 'casual', season: todaySeason })
       setSuggestions(data.suggestions)
       setOccasion('casual')
       setSeason(todaySeason)
@@ -89,11 +91,7 @@ export default function OutfitBuilder() {
 
   async function handleSave(suggestion) {
     try {
-      await axios.post(`${API_URL}/outfits`, {
-        item_ids: suggestion.item_ids,
-        occasion,
-        season,
-      })
+      await axios.post(`${API_URL}/outfits`, { item_ids: suggestion.item_ids, occasion, season })
       setSuggestions((prev) => prev.filter((s) => s !== suggestion))
       fetchSaved()
     } catch {
@@ -104,9 +102,7 @@ export default function OutfitBuilder() {
   async function handleRate(outfitId, rating) {
     try {
       const { data } = await axios.put(`${API_URL}/outfits/${outfitId}`, { rating })
-      setSavedOutfits((prev) =>
-        prev.map((o) => (o.id === outfitId ? { ...o, rating: data.rating } : o))
-      )
+      setSavedOutfits((prev) => prev.map((o) => (o.id === outfitId ? { ...o, rating: data.rating } : o)))
     } catch {
       setError('Failed to save rating.')
     }
@@ -122,148 +118,153 @@ export default function OutfitBuilder() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Sticky header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="flex items-center justify-between px-4 pt-4 pb-2">
-          <h1 className="text-xl font-bold text-gray-900">Outfits</h1>
-          <button
+    <div className="min-h-screen pb-20" style={{ backgroundColor: 'var(--bg-primary)' }}>
+      {/* ── Header ── */}
+      <div className="px-5 pt-10 pb-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs tracking-[0.28em] uppercase mb-1.5" style={{ color: 'var(--accent)' }}>AI Styled</p>
+            <h1 className="text-2xl font-light" style={{ color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Outfits</h1>
+          </div>
+          {/* Wear Today button */}
+          <motion.button
             onClick={handleTodaySuggestion}
             disabled={todayLoading || generating}
-            className="text-sm bg-indigo-600 text-white font-medium px-3 py-1.5 rounded-lg disabled:opacity-60 flex items-center gap-1.5 transition-opacity"
+            whileTap={{ scale: 0.93 }}
+            className="flex items-center gap-2 text-xs font-medium px-4 py-2.5 rounded-2xl transition-opacity disabled:opacity-50"
+            style={{ border: '1px solid rgba(200,169,126,0.35)', color: 'var(--accent)', backgroundColor: 'var(--accent-soft)' }}
           >
-            {todayLoading && (
-              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
+            {todayLoading ? (
+              <span className="w-3.5 h-3.5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
+            ) : (
+              <Sun size={14} strokeWidth={1.75} />
             )}
             Wear Today?
+          </motion.button>
+        </div>
+      </div>
+
+      {/* ── Occasion filter pills ── */}
+      <div className="px-5 pb-3 flex gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+        {OCCASIONS.map((o) => (
+          <button key={o} onClick={() => setOccasion(o)}
+            className="flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 capitalize"
+            style={occasion === o ? PILL_ACTIVE : PILL_IDLE}
+          >
+            {o}
           </button>
-        </div>
+        ))}
+      </div>
 
-        {/* Filters */}
-        <div className="flex gap-2 px-4 pb-2 overflow-x-auto">
-          <select
-            value={occasion}
-            onChange={(e) => setOccasion(e.target.value)}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 flex-shrink-0"
+      {/* ── Season filter pills ── */}
+      <div className="px-5 pb-4 flex gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+        {SEASONS.map((s) => (
+          <button key={s} onClick={() => setSeason(s)}
+            className="flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 capitalize"
+            style={season === s ? PILL_ACTIVE : PILL_IDLE}
           >
-            {OCCASIONS.map((o) => (
-              <option key={o} value={o}>
-                {o}
-              </option>
-            ))}
-          </select>
-          <select
-            value={season}
-            onChange={(e) => setSeason(e.target.value)}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 flex-shrink-0"
-          >
-            {SEASONS.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </div>
+            {s}
+          </button>
+        ))}
+      </div>
 
-        {/* Tabs */}
-        <div className="flex border-t border-gray-100">
+      {/* ── Tabs ── */}
+      <div className="px-5 mb-4">
+        <div className="flex rounded-2xl p-1" style={{ backgroundColor: 'var(--bg-surface)' }}>
           {['generate', 'saved'].map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`flex-1 py-2 text-sm font-medium capitalize transition-colors ${
-                tab === t
-                  ? 'text-indigo-600 border-b-2 border-indigo-600'
-                  : 'text-gray-500'
-              }`}
-            >
-              {t === 'generate' ? 'Generate' : 'Saved'}
-            </button>
+            <div key={t} className="relative flex-1">
+              <button
+                onClick={() => setTab(t)}
+                className="relative w-full py-2.5 text-sm font-medium capitalize z-10 transition-colors duration-200"
+                style={{ color: tab === t ? '#0C0C0C' : 'var(--text-muted)' }}
+              >
+                {t === 'generate' ? 'Generate' : 'Saved'}
+              </button>
+              {tab === t && (
+                <motion.div
+                  layoutId="tab-bg"
+                  className="absolute inset-0 rounded-xl"
+                  style={{ backgroundColor: 'var(--accent)' }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                />
+              )}
+            </div>
           ))}
         </div>
       </div>
 
-      {/* Error bar */}
+      {/* ── Error ── */}
       {error && (
-        <div className="mx-4 mt-3 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
+        <div className="mx-5 mb-4 p-3.5 rounded-2xl text-xs" style={{ backgroundColor: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)', color: '#F87171' }}>
           {error}
         </div>
       )}
 
-      {/* Generate tab */}
-      {tab === 'generate' && (
-        <div className="p-4 space-y-4">
-          <button
-            onClick={handleGenerate}
-            disabled={generating || todayLoading}
-            className="w-full bg-indigo-600 text-white font-semibold py-3.5 rounded-xl disabled:opacity-60 flex items-center justify-center gap-2 transition-opacity"
-          >
-            {generating ? (
-              <>
-                <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                AI is thinking… (up to 30s)
-              </>
-            ) : (
-              'Generate Outfits'
+      {/* ── Generate tab ── */}
+      <AnimatePresence mode="wait">
+        {tab === 'generate' && (
+          <motion.div key="generate" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} transition={{ duration: 0.22 }}
+            className="px-5 space-y-4">
+            <motion.button
+              onClick={handleGenerate}
+              disabled={generating || todayLoading}
+              whileTap={{ scale: 0.97 }}
+              className="w-full py-4 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2.5 disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg, #C8A97E 0%, #9A7A52 100%)', color: '#0C0C0C' }}
+            >
+              {generating ? (
+                <>
+                  <span className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: '#0C0C0C', borderTopColor: 'transparent' }} />
+                  AI is thinking… (up to 30s)
+                </>
+              ) : (
+                <>
+                  <Sparkles size={16} strokeWidth={2} />
+                  Generate Outfits
+                </>
+              )}
+            </motion.button>
+
+            {suggestions.length === 0 && !generating && !error && (
+              <div className="text-center py-20">
+                <Sparkles size={40} strokeWidth={1} style={{ color: 'var(--text-muted)', opacity: 0.3, margin: '0 auto 16px' }} />
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                  Choose an occasion and season,<br />then tap Generate.
+                </p>
+              </div>
             )}
-          </button>
 
-          {suggestions.length === 0 && !generating && !error && (
-            <div className="text-center py-16 text-gray-400">
-              <p className="text-4xl mb-3">✨</p>
-              <p className="text-sm">
-                Choose an occasion and season,
-                <br />
-                then tap Generate.
-              </p>
-            </div>
-          )}
+            {suggestions.map((s, i) => (
+              <OutfitCard key={i} outfit={{ ...s, occasion, season }} onSave={handleSave} isSaved={false} />
+            ))}
+          </motion.div>
+        )}
 
-          {suggestions.map((s, i) => (
-            <OutfitCard
-              key={i}
-              outfit={{ ...s, occasion, season }}
-              onSave={handleSave}
-              isSaved={false}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Saved tab */}
-      {tab === 'saved' && (
-        <div className="p-4 space-y-4">
-          {loadingSaved ? (
-            <div className="space-y-4">
-              {[1, 2].map((i) => (
-                <div
-                  key={i}
-                  className="bg-white rounded-2xl h-48 animate-pulse border border-gray-100"
-                />
-              ))}
-            </div>
-          ) : savedOutfits.length === 0 ? (
-            <div className="text-center py-16 text-gray-400">
-              <p className="text-4xl mb-3">💾</p>
-              <p className="text-sm">
-                No saved outfits yet.
-                <br />
-                Generate some and tap Save.
-              </p>
-            </div>
-          ) : (
-            savedOutfits.map((o) => (
-              <OutfitCard
-                key={o.id}
-                outfit={o}
-                onRate={handleRate}
-                onDelete={handleDelete}
-                isSaved={true}
-              />
-            ))
-          )}
-        </div>
-      )}
+        {/* ── Saved tab ── */}
+        {tab === 'saved' && (
+          <motion.div key="saved" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.22 }}
+            className="px-5 space-y-4">
+            {loadingSaved ? (
+              <div className="space-y-4">
+                {[1, 2].map((i) => (
+                  <div key={i} className="h-48 rounded-2xl shimmer" />
+                ))}
+              </div>
+            ) : savedOutfits.length === 0 ? (
+              <div className="text-center py-20">
+                <Sparkles size={40} strokeWidth={1} style={{ color: 'var(--text-muted)', opacity: 0.3, margin: '0 auto 16px' }} />
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                  No saved outfits yet.<br />Generate some and tap Save.
+                </p>
+              </div>
+            ) : (
+              savedOutfits.map((o) => (
+                <OutfitCard key={o.id} outfit={o} onRate={handleRate} onDelete={handleDelete} isSaved={true} />
+              ))
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

@@ -1,1 +1,128 @@
 @import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-primary: #0C0C0C;
+    --bg-surface: #161616;
+    --bg-elevated: #1E1E1E;
+    --border: rgba(255, 255, 255, 0.07);
+    --text-primary: #F0EDE8;
+    --text-muted: #6B6560;
+    --accent: #C8A97E;
+    --accent-soft: rgba(200, 169, 126, 0.10);
+    --success: #4ADE80;
+    --warning: #FBB846;
+    --danger: #F87171;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Text', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+
+  input,
+  textarea,
+  select {
+    background-color: var(--bg-elevated);
+    color: var(--text-primary);
+    border-color: var(--border);
+    outline: none;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--text-muted);
+  }
+
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+
+@layer utilities {
+  /* ── Color utilities ─────────────────────────────── */
+  .text-accent       { color: var(--accent); }
+  .text-primary-warm { color: var(--text-primary); }
+  .text-muted-warm   { color: var(--text-muted); }
+  .bg-surface        { background-color: var(--bg-surface); }
+  .bg-elevated       { background-color: var(--bg-elevated); }
+  .border-subtle     { border-color: var(--border); }
+  .bg-accent-soft    { background-color: var(--accent-soft); }
+
+  /* ── Shimmer skeleton loader ─────────────────────── */
+  @keyframes shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position:  200% 0; }
+  }
+
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      #1a1a1a 25%,
+      #242424 50%,
+      #1a1a1a 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.8s ease-in-out infinite;
+  }
+
+  /* ── Gold glow pulse ─────────────────────────────── */
+  @keyframes gold-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(200, 169, 126, 0); }
+    50%       { box-shadow: 0 0 16px 4px rgba(200, 169, 126, 0.18); }
+  }
+
+  .glow-gold {
+    animation: gold-pulse 2.8s ease-in-out infinite;
+  }
+
+  /* ── Fade-up entrance ────────────────────────────── */
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0);    }
+  }
+
+  .fade-up {
+    animation: fade-up 0.48s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+  }
+
+  /* ── Pulsing rings (AI loading) ──────────────────── */
+  @keyframes ring-pulse {
+    0%   { transform: scale(1);    opacity: 0.6; }
+    50%  { transform: scale(1.35); opacity: 0.15; }
+    100% { transform: scale(1);    opacity: 0.6; }
+  }
+
+  .ring-pulse-1 { animation: ring-pulse 2.0s ease-in-out infinite; }
+  .ring-pulse-2 { animation: ring-pulse 2.0s ease-in-out 0.35s infinite; }
+  .ring-pulse-3 { animation: ring-pulse 2.0s ease-in-out 0.70s infinite; }
+
+  /* ── Text reveal (tracking animation) ───────────────── */
+  @keyframes text-reveal {
+    from { opacity: 0; letter-spacing: 0.4em; }
+    to   { opacity: 1; letter-spacing: 0.25em; }
+  }
+
+  .text-reveal {
+    animation: text-reveal 0.8s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+  }
+}
