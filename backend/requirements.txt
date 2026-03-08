@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+sqlmodel
+httpx
+python-multipart
+pillow
