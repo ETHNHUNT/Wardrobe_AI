@@ -93,7 +93,7 @@ export default function OutfitBuilder() {
     try {
       await axios.post(`${API_URL}/outfits`, { item_ids: suggestion.item_ids, occasion, season })
       setSuggestions((prev) => prev.filter((s) => s !== suggestion))
-      fetchSaved()
+      // Don't prefetch saved outfits here — the useEffect on [tab] fetches when user switches tabs
     } catch {
       setError('Failed to save outfit.')
     }

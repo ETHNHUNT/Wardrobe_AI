@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { Camera, Upload, CheckCircle2, RotateCcw, Barcode } from 'lucide-react'
 import axios from 'axios'
 import BarcodeScanner from '../components/BarcodeScanner'
+import { parseJson } from '../lib/utils'
 
 const API_URL = import.meta.env.VITE_API_URL
 
@@ -105,7 +106,6 @@ export default function AddItem() {
 
   // ── Barcode ──────────────────────────────────────────────────────────────
   async function handleBarcodeScanned(upc) {
-    setPhase('idle')
     setError('')
     try {
       const { data } = await axios.get(`${API_URL}/items/barcode/${upc}`)
@@ -153,8 +153,8 @@ export default function AddItem() {
           fit_type:   data.fit_type   ?? '',
           brand:      data.brand      ?? '',
           size_label: data.size_label ?? '',
-          occasions:  tryParseArray(data.occasions),
-          seasons:    tryParseArray(data.seasons),
+          occasions:  parseJson(data.occasions),
+          seasons:    parseJson(data.seasons),
         }))
         setPhase('manual_form')
       } else {
@@ -164,10 +164,6 @@ export default function AddItem() {
       setError('Upload failed. Make sure the backend is running.')
       setPhase('previewing')
     }
-  }
-
-  function tryParseArray(str) {
-    try { return JSON.parse(str) } catch { return [] }
   }
 
   // ── Manual form ──────────────────────────────────────────────────────────

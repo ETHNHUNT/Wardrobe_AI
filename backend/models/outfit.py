@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlmodel import SQLModel, Field
 
 
@@ -8,4 +8,4 @@ class SavedOutfit(SQLModel, table=True):
     occasion: str | None = None
     season: str | None = None
     rating: int | None = None  # 1-5 stars
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

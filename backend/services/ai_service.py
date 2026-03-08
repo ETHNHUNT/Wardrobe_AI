@@ -6,12 +6,8 @@ import httpx
 
 OLLAMA_URL = "http://localhost:11434/api/chat"
 MODEL = "qwen3.5:2b"
-
-# NOTE: These configuration flags are placeholders for a future Gemini-based
-# fallback implementation. They are intentionally unused in the current phase.
-USE_LOCAL_AI = True
-GEMINI_API_KEY = ""   # Optional: set in .env if using Gemini fallback
-GEMINI_MODEL = "gemini-2.5-flash-lite"
+# Gemini fallback not yet implemented.
+# When needed: GEMINI_MODEL = "gemini-2.5-flash-lite", GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 TAGGING_PROMPT = """You are a fashion assistant. Analyze this clothing item photo and return ONLY valid JSON with no markdown, no explanation.
 
@@ -72,9 +68,12 @@ async def tag_clothing_image(image_path: str) -> dict:
         return {}
 
 
-def _slim_items(items: list[dict]) -> list[dict]:
-    """Trim item dicts to only the fields relevant for outfit generation."""
-    keep = {"id", "category", "colors", "occasions", "seasons", "fit_type"}
+_OUTFIT_FIELDS = {"id", "category", "colors", "occasions", "seasons", "fit_type"}
+_GAPS_FIELDS   = {"id", "category", "occasions", "seasons", "colors"}
+
+
+def _slim_items(items: list[dict], keep: set = _OUTFIT_FIELDS) -> list[dict]:
+    """Trim item dicts to only the specified fields."""
     return [{k: v for k, v in item.items() if k in keep} for item in items]
 
 
@@ -113,19 +112,13 @@ Return ONLY JSON array:
         return []
 
 
-def _slim_items_for_gaps(items: list[dict]) -> list[dict]:
-    """Trim item dicts to only the fields relevant for gap analysis."""
-    keep = {"id", "category", "occasions", "seasons", "colors"}
-    return [{k: v for k, v in item.items() if k in keep} for item in items]
-
-
 async def analyze_gaps(items: list[dict]) -> dict:
     """
     Call Ollama to analyze wardrobe gaps by occasion and season.
     Returns {"gaps": [...], "coverage_score": {...}} on success.
     Returns {"gaps": [], "coverage_score": {}} on any failure (Ollama down, malformed JSON, etc).
     """
-    slimmed = _slim_items_for_gaps(items)
+    slimmed = _slim_items(items, keep=_GAPS_FIELDS)
     prompt = f"""Analyze this wardrobe for gaps by occasion and season.
 
 Wardrobe: {json.dumps(slimmed)}
