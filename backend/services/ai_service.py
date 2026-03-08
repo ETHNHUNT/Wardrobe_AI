@@ -113,7 +113,45 @@ Return ONLY JSON array:
         return []
 
 
+def _slim_items_for_gaps(items: list[dict]) -> list[dict]:
+    """Trim item dicts to only the fields relevant for gap analysis."""
+    keep = {"id", "category", "occasions", "seasons", "colors"}
+    return [{k: v for k, v in item.items() if k in keep} for item in items]
+
+
 async def analyze_gaps(items: list[dict]) -> dict:
-    """Phase 3: Analyze wardrobe gaps. Not implemented in Phase 1."""
-    # TODO: implement in Phase 3
-    return {"gaps": [], "coverage_score": {}}
+    """
+    Call Ollama to analyze wardrobe gaps by occasion and season.
+    Returns {"gaps": [...], "coverage_score": {...}} on success.
+    Returns {"gaps": [], "coverage_score": {}} on any failure (Ollama down, malformed JSON, etc).
+    """
+    slimmed = _slim_items_for_gaps(items)
+    prompt = f"""Analyze this wardrobe for gaps by occasion and season.
+
+Wardrobe: {json.dumps(slimmed)}
+
+Return ONLY JSON:
+{{
+  "gaps": [
+    {{"occasion": "formal", "missing_items": ["dress shirt", "formal trousers"], "priority": "high", "reason": "0 formal outfits possible"}}
+  ],
+  "coverage_score": {{"casual": 8, "work": 4, "formal": 0, "sport": 2}}
+}}"""
+
+    payload = {
+        "model": MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "stream": False,
+        "options": {"temperature": 0.1},
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(OLLAMA_URL, json=payload)
+        raw = resp.json()["message"]["content"]
+        result = parse_ai_json(raw)
+        if isinstance(result, dict) and "gaps" in result:
+            return result
+        return {"gaps": [], "coverage_score": {}}
+    except Exception:
+        return {"gaps": [], "coverage_score": {}}

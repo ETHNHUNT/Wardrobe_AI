@@ -12,7 +12,7 @@ from models.item import ClothingItem     # noqa: F401
 from models.outfit import SavedOutfit    # noqa: F401
 
 from database import create_db_and_tables
-from routers import profile, items, outfits
+from routers import profile, items, outfits, shop
 
 
 @asynccontextmanager
@@ -39,3 +39,4 @@ app.mount("/images", StaticFiles(directory="data/images"), name="images")
 app.include_router(profile.router)
 app.include_router(items.router)
 app.include_router(outfits.router)
+app.include_router(shop.router)
