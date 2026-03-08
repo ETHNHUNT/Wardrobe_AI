@@ -72,13 +72,16 @@ export default function Profile() {
       const payload = { ...form }
       for (const field of MEASUREMENT_FIELDS) {
         const rawValue = payload[field.key]
-        if (rawValue !== '') {
-          const parsed = parseFloat(rawValue)
-          if (Number.isFinite(parsed)) {
-            payload[field.key] = parsed
-          } else {
-            delete payload[field.key]
-          }
+        if (rawValue === '') {
+          // Remove empty-string measurements so backend treats them as None
+          delete payload[field.key]
+          continue
+        }
+        const parsed = parseFloat(rawValue)
+        if (Number.isFinite(parsed)) {
+          payload[field.key] = parsed
+        } else {
+          delete payload[field.key]
         }
       }
       await axios.post(`${API_URL}/profile`, payload)
