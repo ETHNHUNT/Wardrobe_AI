@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlmodel import SQLModel, Field
 
 
@@ -13,6 +13,6 @@ class ClothingItem(SQLModel, table=True):
     fit_type: str | None = None              # slim, regular, oversized, relaxed
     occasions: str = "[]"                    # JSON array: ["casual", "work", "formal"]
     seasons: str = "[]"                      # JSON array: ["spring", "summer", "fall", "winter"]
-    date_added: datetime = Field(default_factory=datetime.utcnow)
+    date_added: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     times_worn: int = 0
     notes: str | None = None

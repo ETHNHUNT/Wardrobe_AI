@@ -69,7 +69,7 @@ export default function OutfitCard({ outfit, onSave, onRate, onDelete, isSaved }
           >
             {item.photo_path && item.photo_path !== 'tmp' ? (
               <img
-                src={`${API_URL}/images/${item.photo_path.split('/').pop()}`}
+                src={`${API_URL}/images/${item.photo_path}`}
                 alt={item.category}
                 className="w-full h-full object-cover"
                 loading="lazy"

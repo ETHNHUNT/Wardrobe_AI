@@ -88,11 +88,20 @@ def list_outfits(
         query = query.where(SavedOutfit.season == season)
     outfits = session.exec(query).all()
 
+    # Collect all item IDs across all outfits, fetch in a single query
+    all_ids = [iid for o in outfits for iid in json.loads(o.item_ids)]
+    if all_ids:
+        item_map = {
+            i.id: i
+            for i in session.exec(select(ClothingItem).where(ClothingItem.id.in_(all_ids))).all()
+        }
+    else:
+        item_map = {}
+
     result = []
     for outfit in outfits:
         item_ids = json.loads(outfit.item_ids)
-        items = [session.get(ClothingItem, iid) for iid in item_ids]
-        items = [i for i in items if i is not None]
+        items = [item_map[iid] for iid in item_ids if iid in item_map]
         result.append(
             {
                 **outfit.model_dump(),

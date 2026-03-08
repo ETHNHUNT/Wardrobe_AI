@@ -1,3 +1,5 @@
+import time
+
 from fastapi import APIRouter, Depends
 from sqlmodel import Session, select
 
@@ -9,6 +11,24 @@ from services.shopping_service import compute_local_coverage, build_suggestions
 
 router = APIRouter()
 
+# Simple in-memory cache for analyze_gaps — avoids a second 30-60s Ollama call
+# when /shop/gaps and /shop/suggest are both called on the same page load.
+_gaps_cache: dict = {"result": None, "item_count": -1, "ts": 0.0}
+_GAPS_CACHE_TTL = 90  # seconds
+
+
+async def _get_gaps_cached(items: list[dict]) -> dict:
+    now = time.monotonic()
+    if (
+        _gaps_cache["item_count"] == len(items)
+        and now - _gaps_cache["ts"] < _GAPS_CACHE_TTL
+        and _gaps_cache["result"] is not None
+    ):
+        return _gaps_cache["result"]
+    result = await analyze_gaps(items)
+    _gaps_cache.update({"result": result, "item_count": len(items), "ts": now})
+    return result
+
 
 @router.get("/shop/gaps")
 async def get_gaps(session: Session = Depends(get_session)):
@@ -19,7 +39,7 @@ async def get_gaps(session: Session = Depends(get_session)):
     """
     items = [i.model_dump() for i in session.exec(select(ClothingItem)).all()]
     local_coverage = compute_local_coverage(items)
-    ai_result = await analyze_gaps(items)
+    ai_result = await _get_gaps_cached(items)
     return {
         "total_items": len(items),
         "local_coverage": local_coverage,
@@ -42,7 +62,7 @@ async def get_suggestions(
     items = [i.model_dump() for i in session.exec(select(ClothingItem)).all()]
     profile = session.get(UserProfile, 1) or UserProfile()
 
-    ai_result = await analyze_gaps(items)
+    ai_result = await _get_gaps_cached(items)  # reuses cached result from /shop/gaps if fresh
     gaps = ai_result.get("gaps", [])
     suggestions = build_suggestions(gaps, profile.model_dump(), brand, budget_cad)
 

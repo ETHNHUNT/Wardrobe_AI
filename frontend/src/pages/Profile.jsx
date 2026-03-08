@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import axios from 'axios'
 
@@ -35,6 +35,9 @@ export default function Profile() {
   const [toast, setToast]       = useState('')
   const [toastOk, setToastOk]   = useState(true)
   const [focused, setFocused]   = useState(null)
+  const toastTimerRef = useRef(null)
+
+  useEffect(() => () => clearTimeout(toastTimerRef.current), [])
 
   useEffect(() => {
     async function loadProfile() {
@@ -82,12 +85,14 @@ export default function Profile() {
       await axios.post(`${API_URL}/profile`, payload)
       setToastOk(true)
       setToast('Profile saved successfully')
-      setTimeout(() => setToast(''), 3000)
+      clearTimeout(toastTimerRef.current)
+      toastTimerRef.current = setTimeout(() => setToast(''), 3000)
     } catch (err) {
       console.error('Failed to save profile:', err)
       setToastOk(false)
       setToast('Save failed — check backend connection.')
-      setTimeout(() => setToast(''), 4000)
+      clearTimeout(toastTimerRef.current)
+      toastTimerRef.current = setTimeout(() => setToast(''), 3000)
     } finally {
       setSaving(false)
     }

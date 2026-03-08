@@ -1,19 +1,23 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { CheckCircle2 } from 'lucide-react'
 import axios from 'axios'
+import { parseJson } from '../lib/utils'
 
 const API_URL = import.meta.env.VITE_API_URL
-
-function parseJson(str, fallback = []) {
-  try { return JSON.parse(str) } catch { return fallback }
-}
 
 export default function ItemCard({ item, onClick, onWorn }) {
   const colors   = parseJson(item.colors)
   const [timesWorn, setTimesWorn] = useState(item.times_worn ?? 0)
   const [marking, setMarking]     = useState(false)
   const [wornFlash, setWornFlash] = useState(false)
+
+  // Clean up flash timer on unmount
+  useEffect(() => {
+    if (!wornFlash) return
+    const id = setTimeout(() => setWornFlash(false), 800)
+    return () => clearTimeout(id)
+  }, [wornFlash])
 
   async function handleMarkWorn(e) {
     e.stopPropagation()
@@ -23,7 +27,6 @@ export default function ItemCard({ item, onClick, onWorn }) {
       const { data } = await axios.post(`${API_URL}/items/${item.id}/worn`)
       setTimesWorn(data.times_worn)
       setWornFlash(true)
-      setTimeout(() => setWornFlash(false), 800)
       onWorn && onWorn(item.id, data.times_worn)
     } catch {
       // silently ignore

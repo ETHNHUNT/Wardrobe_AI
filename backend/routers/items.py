@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from PIL import Image
+from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from database import get_session
@@ -14,6 +15,28 @@ from services.barcode_service import lookup_upc
 
 router = APIRouter()
 IMAGES_DIR = Path("data/images")
+
+
+class ClothingItemUpdate(BaseModel):
+    category: str | None = None
+    colors: str | None = None
+    tags: str | None = None
+    brand: str | None = None
+    size_label: str | None = None
+    fit_type: str | None = None
+    occasions: str | None = None
+    seasons: str | None = None
+    notes: str | None = None
+
+
+def _apply_tags(item: ClothingItem, tags: dict, *, preserve_existing: bool = False) -> None:
+    """Write AI tag fields onto a ClothingItem in place."""
+    item.category  = tags.get("category",  item.category  if preserve_existing else "other")
+    item.fit_type  = tags.get("fit_type",  item.fit_type  if preserve_existing else None)
+    item.colors    = json.dumps(tags.get("colors",    []))
+    item.tags      = json.dumps(tags.get("tags",      []))
+    item.occasions = json.dumps(tags.get("occasions", []))
+    item.seasons   = json.dumps(tags.get("seasons",   []))
 
 
 @router.post("/items")
@@ -60,12 +83,7 @@ async def add_item(
         ai_tagged = bool(tags)
 
         if tags:
-            item.category = tags.get("category", "other")
-            item.colors = json.dumps(tags.get("colors", []))
-            item.tags = json.dumps(tags.get("tags", []))
-            item.fit_type = tags.get("fit_type")
-            item.occasions = json.dumps(tags.get("occasions", []))
-            item.seasons = json.dumps(tags.get("seasons", []))
+            _apply_tags(item, tags, preserve_existing=False)
 
         # User-provided metadata overrides AI (explicit input wins)
         if metadata:
@@ -150,16 +168,14 @@ def get_item(item_id: int, session: Session = Depends(get_session)):
 
 
 @router.put("/items/{item_id}")
-def update_item(item_id: int, data: dict, session: Session = Depends(get_session)):
-    """Partial update. Protects id, photo_path, and date_added from being overwritten."""
+def update_item(item_id: int, data: ClothingItemUpdate, session: Session = Depends(get_session)):
+    """Partial update. Only writable fields accepted; id, photo_path, date_added are protected by omission."""
     item = session.get(ClothingItem, item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    protected = {"id", "photo_path", "date_added"}
-    for field, value in data.items():
-        if field not in protected and hasattr(item, field):
-            setattr(item, field, value)
+    for field, value in data.model_dump(exclude_none=True).items():
+        setattr(item, field, value)
 
     session.add(item)
     session.commit()
@@ -192,12 +208,7 @@ async def retag_item(item_id: int, session: Session = Depends(get_session)):
     tags = await tag_clothing_image(str(full_path))
 
     if tags:
-        item.category = tags.get("category", item.category)
-        item.colors = json.dumps(tags.get("colors", []))
-        item.tags = json.dumps(tags.get("tags", []))
-        item.fit_type = tags.get("fit_type", item.fit_type)
-        item.occasions = json.dumps(tags.get("occasions", []))
-        item.seasons = json.dumps(tags.get("seasons", []))
+        _apply_tags(item, tags, preserve_existing=True)
         session.add(item)
         session.commit()
         session.refresh(item)
