@@ -58,7 +58,7 @@ export default function Wardrobe() {
         </div>
 
         {/* Filter bar */}
-        <div className="flex gap-2 px-4 pb-3 overflow-x-auto scrollbar-hide">
+        <div className="flex gap-2 px-4 pb-3 overflow-x-auto">
           <select
             value={filters.category}
             onChange={(e) => handleFilter('category', e.target.value)}

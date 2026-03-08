@@ -6,9 +6,11 @@ import httpx
 
 OLLAMA_URL = "http://localhost:11434/api/chat"
 MODEL = "qwen3.5:2b"
-USE_LOCAL_AI = True
 
-GEMINI_API_KEY = ""   # Optional: set in .env if using fallback
+# NOTE: These configuration flags are placeholders for a future Gemini-based
+# fallback implementation. They are intentionally unused in the current phase.
+USE_LOCAL_AI = True
+GEMINI_API_KEY = ""   # Optional: set in .env if using Gemini fallback
 GEMINI_MODEL = "gemini-2.5-flash-lite"
 
 TAGGING_PROMPT = """You are a fashion assistant. Analyze this clothing item photo and return ONLY valid JSON with no markdown, no explanation.

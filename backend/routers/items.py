@@ -1,6 +1,6 @@
 import io
 import json
-import time
+import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -26,8 +26,8 @@ async def add_item(
     Optional `metadata` field: JSON string with pre-filled category/brand/etc.
     AI tagging runs automatically; caller checks `ai_tagged` field in response.
     """
-    ts = int(time.time())
-    tmp_path = IMAGES_DIR / f"tmp_{ts}.jpg"
+    uid = uuid.uuid4().hex
+    tmp_path = IMAGES_DIR / f"tmp_{uid}.jpg"
 
     # Read and validate the uploaded image
     contents = await photo.read()
@@ -40,46 +40,61 @@ async def add_item(
     # Write original bytes to disk (not from exhausted img object)
     tmp_path.write_bytes(contents)
 
-    # Insert placeholder row to obtain the DB-assigned ID
-    item = ClothingItem(photo_path="tmp", category="unknown")
-    session.add(item)
-    session.commit()
-    session.refresh(item)
+    final_path = None
+    try:
+        # Flush to get DB-assigned ID without committing the transaction
+        item = ClothingItem(photo_path="tmp", category="unknown")
+        session.add(item)
+        session.flush()
+        session.refresh(item)
 
-    # Rename file to final name using the real ID
-    filename = f"{item.id}_{ts}.jpg"
-    final_path = IMAGES_DIR / filename
-    tmp_path.rename(final_path)
-    item.photo_path = filename
+        # Rename file to final name using the real ID
+        filename = f"{item.id}_{uid}.jpg"
+        final_path = IMAGES_DIR / filename
+        tmp_path.rename(final_path)
+        item.photo_path = filename
 
-    # Run AI tagging
-    tags = await tag_clothing_image(str(final_path))
-    ai_tagged = bool(tags)
+        # Run AI tagging
+        tags = await tag_clothing_image(str(final_path))
+        ai_tagged = bool(tags)
 
-    if tags:
-        item.category = tags.get("category", "other")
-        item.colors = json.dumps(tags.get("colors", []))
-        item.tags = json.dumps(tags.get("tags", []))
-        item.fit_type = tags.get("fit_type")
-        item.occasions = json.dumps(tags.get("occasions", []))
-        item.seasons = json.dumps(tags.get("seasons", []))
+        if tags:
+            item.category = tags.get("category", "other")
+            item.colors = json.dumps(tags.get("colors", []))
+            item.tags = json.dumps(tags.get("tags", []))
+            item.fit_type = tags.get("fit_type")
+            item.occasions = json.dumps(tags.get("occasions", []))
+            item.seasons = json.dumps(tags.get("seasons", []))
 
-    # User-provided metadata overrides AI (explicit input wins)
-    if metadata:
+        # User-provided metadata overrides AI (explicit input wins)
+        if metadata:
+            try:
+                meta = json.loads(metadata)
+                for field in ("category", "brand", "size_label", "fit_type", "notes"):
+                    if field in meta and meta[field]:
+                        setattr(item, field, meta[field])
+                for field in ("colors", "tags", "occasions", "seasons"):
+                    if field in meta and meta[field]:
+                        setattr(item, field, json.dumps(meta[field]))
+            except json.JSONDecodeError:
+                # Ignore invalid metadata JSON, preserving AI-derived/default values
+                pass
+
+        session.add(item)
+        session.commit()
+        session.refresh(item)
+
+    except Exception:
+        # Roll back DB changes and clean up any files on failure
+        session.rollback()
         try:
-            meta = json.loads(metadata)
-            for field in ("category", "brand", "size_label", "fit_type", "notes"):
-                if field in meta and meta[field]:
-                    setattr(item, field, meta[field])
-            for field in ("colors", "tags", "occasions", "seasons"):
-                if field in meta and meta[field]:
-                    setattr(item, field, json.dumps(meta[field]))
-        except json.JSONDecodeError:
+            if final_path is not None and final_path.exists():
+                final_path.unlink()
+            elif tmp_path.exists():
+                tmp_path.unlink()
+        except Exception:
             pass
-
-    session.add(item)
-    session.commit()
-    session.refresh(item)
+        raise HTTPException(status_code=500, detail="Failed to process uploaded item")
 
     return {**item.model_dump(), "ai_tagged": ai_tagged}
 

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 
@@ -13,10 +13,10 @@ const SEASONS = ['spring', 'summer', 'fall', 'winter']
 export default function AddItem() {
   const navigate = useNavigate()
   const fileInputRef = useRef(null)
-  const cameraInputRef = useRef(null)
   const streamRef = useRef(null)
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
+  const previewUrlRef = useRef(null)
 
   const [phase, setPhase] = useState('idle') // idle | camera | previewing | uploading | done | manual_form
   const [preview, setPreview] = useState(null)
@@ -36,6 +36,24 @@ export default function AddItem() {
     seasons: [],
   })
   const [savingManual, setSavingManual] = useState(false)
+
+  // Stop camera and revoke any object URL on unmount
+  useEffect(() => {
+    return () => {
+      stopCamera()
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current)
+      }
+    }
+  }, [])
+
+  function setPreviewUrl(url) {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current)
+    }
+    previewUrlRef.current = url
+    setPreview(url)
+  }
 
   // ── Camera ──────────────────────────────────────────────────────────────
   async function startCamera() {
@@ -67,10 +85,14 @@ export default function AddItem() {
     canvas.height = video.videoHeight
     canvas.getContext('2d').drawImage(video, 0, 0)
     canvas.toBlob((blob) => {
+      if (!blob) {
+        setError('Failed to capture photo. Please try again.')
+        return
+      }
       const file = new File([blob], 'capture.jpg', { type: 'image/jpeg' })
       stopCamera()
       setPhotoFile(file)
-      setPreview(URL.createObjectURL(blob))
+      setPreviewUrl(URL.createObjectURL(blob))
       setPhase('previewing')
     }, 'image/jpeg', 0.9)
   }
@@ -79,7 +101,7 @@ export default function AddItem() {
     const file = e.target.files?.[0]
     if (!file) return
     setPhotoFile(file)
-    setPreview(URL.createObjectURL(file))
+    setPreviewUrl(URL.createObjectURL(file))
     setPhase('previewing')
   }
 
