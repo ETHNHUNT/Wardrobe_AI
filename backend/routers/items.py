@@ -10,6 +10,7 @@ from sqlmodel import Session, select
 from database import get_session
 from models.item import ClothingItem
 from services.ai_service import tag_clothing_image
+from services.barcode_service import lookup_upc
 
 router = APIRouter()
 IMAGES_DIR = Path("data/images")
@@ -116,6 +117,28 @@ def list_items(
     if season:
         query = query.where(ClothingItem.seasons.like(f'%"{season}"%'))
     return session.exec(query).all()
+
+
+@router.get("/items/barcode/{upc}")
+async def lookup_barcode(upc: str):
+    """Look up a clothing item by UPC barcode via UPCItemDB."""
+    result = await lookup_upc(upc)
+    if not result:
+        raise HTTPException(status_code=404, detail="Product not found for this barcode")
+    return result
+
+
+@router.post("/items/{item_id}/worn")
+def mark_worn(item_id: int, session: Session = Depends(get_session)):
+    """Increment the times_worn counter for an item."""
+    item = session.get(ClothingItem, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    item.times_worn = (item.times_worn or 0) + 1
+    session.add(item)
+    session.commit()
+    session.refresh(item)
+    return {"id": item.id, "times_worn": item.times_worn}
 
 
 @router.get("/items/{item_id}")

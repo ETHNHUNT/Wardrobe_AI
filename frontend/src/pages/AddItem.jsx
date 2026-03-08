@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import BarcodeScanner from '../components/BarcodeScanner'
 
 const API_URL = import.meta.env.VITE_API_URL
 
@@ -18,7 +19,8 @@ export default function AddItem() {
   const canvasRef = useRef(null)
   const previewUrlRef = useRef(null)
 
-  const [phase, setPhase] = useState('idle') // idle | camera | previewing | uploading | done | manual_form
+  const [phase, setPhase] = useState('idle') // idle | barcode | camera | previewing | uploading | done | manual_form
+  const [barcodeInfo, setBarcodeInfo] = useState(null) // pre-filled from barcode lookup
   const [preview, setPreview] = useState(null)
   const [photoFile, setPhotoFile] = useState(null)
   const [savedItem, setSavedItem] = useState(null)
@@ -109,6 +111,30 @@ export default function AddItem() {
     setPhotoFile(null)
     setPreview(null)
     setError('')
+    setBarcodeInfo(null)
+    setPhase('idle')
+  }
+
+  // ── Barcode scanning ────────────────────────────────────────────────────
+  async function handleBarcodeScanned(upc) {
+    setPhase('idle')
+    setError('')
+    try {
+      const { data } = await axios.get(`${API_URL}/items/barcode/${upc}`)
+      setBarcodeInfo(data)
+      // Pre-fill manual form with barcode data, then prompt user to take a photo
+      setManualForm((prev) => ({
+        ...prev,
+        brand: data.brand ?? '',
+        size_label: data.size ?? '',
+        colors: data.color ?? '',
+        notes: data.title ?? '',
+      }))
+    } catch {
+      // Product not in UPCItemDB — that's okay, just proceed with empty form
+      setBarcodeInfo({})
+    }
+    // After barcode, prompt user to take/upload the photo
     setPhase('idle')
   }
 
@@ -120,6 +146,15 @@ export default function AddItem() {
 
     const formData = new FormData()
     formData.append('photo', photoFile)
+    // Include any barcode-pre-filled metadata
+    if (barcodeInfo && Object.keys(barcodeInfo).length > 0) {
+      const meta = {}
+      if (barcodeInfo.brand) meta.brand = barcodeInfo.brand
+      if (barcodeInfo.size) meta.size_label = barcodeInfo.size
+      if (barcodeInfo.color) meta.colors = [barcodeInfo.color]
+      if (barcodeInfo.title) meta.notes = barcodeInfo.title
+      formData.append('metadata', JSON.stringify(meta))
+    }
 
     try {
       const { data } = await axios.post(`${API_URL}/items`, formData, {
@@ -188,6 +223,9 @@ export default function AddItem() {
   }
 
   // ── Render ───────────────────────────────────────────────────────────────
+  if (phase === 'barcode') {
+    return <BarcodeScanner onScan={handleBarcodeScanned} onClose={() => setPhase('idle')} />
+  }
   if (phase === 'done') {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 pb-20">
@@ -420,7 +458,17 @@ export default function AddItem() {
         <p className="text-sm text-gray-400 mt-0.5">Take a photo or upload from your gallery</p>
       </div>
 
-      <div className="flex flex-col items-center justify-center px-4 py-16 gap-4">
+      <div className="flex flex-col items-center justify-center px-4 py-12 gap-4">
+        {/* Barcode info banner */}
+        {barcodeInfo && Object.keys(barcodeInfo).length > 0 && (
+          <div className="w-full max-w-sm bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+            <p className="text-xs font-semibold text-green-700 mb-0.5">Barcode scanned</p>
+            {barcodeInfo.title && <p className="text-sm text-green-800 truncate">{barcodeInfo.title}</p>}
+            {barcodeInfo.brand && <p className="text-xs text-green-600">{barcodeInfo.brand}{barcodeInfo.size ? ` · ${barcodeInfo.size}` : ''}</p>}
+            <p className="text-xs text-green-500 mt-1">Now take a photo of the item below</p>
+          </div>
+        )}
+
         {/* Camera button */}
         <button
           onClick={startCamera}
@@ -445,6 +493,18 @@ export default function AddItem() {
               d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
           </svg>
           Upload from Gallery
+        </button>
+
+        {/* Barcode scan button */}
+        <button
+          onClick={() => setPhase('barcode')}
+          className="w-full max-w-sm border-2 border-gray-200 text-gray-600 font-semibold py-4 rounded-2xl flex items-center justify-center gap-3 hover:border-indigo-400 hover:text-indigo-600 transition-colors"
+        >
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M4 6h1M4 10h1M4 14h1M4 18h1M9 6v12M12 6v12M15 6v12M19 6h1M19 10h1M19 14h1M19 18h1" />
+          </svg>
+          Scan Barcode
         </button>
 
         <input
