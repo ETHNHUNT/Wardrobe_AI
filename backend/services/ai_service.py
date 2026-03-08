@@ -72,10 +72,45 @@ async def tag_clothing_image(image_path: str) -> dict:
         return {}
 
 
+def _slim_items(items: list[dict]) -> list[dict]:
+    """Trim item dicts to only the fields relevant for outfit generation."""
+    keep = {"id", "category", "colors", "occasions", "seasons", "fit_type"}
+    return [{k: v for k, v in item.items() if k in keep} for item in items]
+
+
 async def generate_outfits(items: list[dict], occasion: str, season: str) -> list[dict]:
-    """Phase 2: Generate outfit suggestions. Not implemented in Phase 1."""
-    # TODO: implement in Phase 2
-    return []
+    """
+    Call Ollama to generate 3 outfit suggestions.
+    Returns a list of {"items": [...], "reason": "..."} dicts.
+    Returns [] on any failure (Ollama down, malformed JSON, etc).
+    """
+    prompt = f"""You are a personal stylist. Suggest exactly 3 outfits for occasion: {occasion}, season: {season}.
+
+Wardrobe: {json.dumps(_slim_items(items))}
+
+Rules: each outfit 2-4 items, color-coordinate, match occasion and season.
+Return ONLY JSON array:
+[
+  {{"items": [1, 3], "reason": "brief note"}},
+  {{"items": [2, 5, 7], "reason": "brief note"}},
+  {{"items": [1, 4, 6], "reason": "brief note"}}
+]"""
+
+    payload = {
+        "model": MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "stream": False,
+        "options": {"temperature": 0.3},
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(OLLAMA_URL, json=payload)
+        raw = resp.json()["message"]["content"]
+        result = parse_ai_json(raw)
+        return result if isinstance(result, list) else []
+    except Exception:
+        return []
 
 
 async def analyze_gaps(items: list[dict]) -> dict:
