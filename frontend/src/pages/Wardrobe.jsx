@@ -3,6 +3,8 @@ import axios from 'axios'
 import { gsap } from 'gsap'
 import { Shirt } from 'lucide-react'
 import ItemCard from '../components/ItemCard'
+import SplineScene from '../components/SplineScene'
+import { SCENES } from '../lib/scenes'
 
 const API_URL = import.meta.env.VITE_API_URL
 
@@ -110,18 +112,32 @@ export default function Wardrobe() {
   return (
     <div className="min-h-screen pb-24" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* ── Hero Header ── */}
-      <div className="px-5 pt-12 pb-5">
-        <p className="text-reveal text-xs tracking-[0.28em] uppercase mb-2" style={{ color: 'var(--accent)' }}>
-          Personal
-        </p>
-        <h1 className="text-3xl font-light tracking-tight" style={{ color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-          My Wardrobe
-        </h1>
-        {!loading && (
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            {items.length} {items.length === 1 ? 'item' : 'items'}
+      <div className="relative overflow-hidden" style={{ height: 180 }}>
+        {/* 3D scene sits behind the text, non-interactive */}
+        <SplineScene
+          scene={SCENES.wardrobeHero}
+          style={{
+            position: 'absolute', inset: 0,
+            width: '100%', height: '100%',
+            pointerEvents: 'none',
+            opacity: 0.75,
+            mixBlendMode: 'lighten',
+          }}
+        />
+        {/* Text always renders on top regardless of whether Spline loads */}
+        <div className="relative z-10 px-5 pt-12 pb-5">
+          <p className="text-reveal text-xs tracking-[0.28em] uppercase mb-2" style={{ color: 'var(--accent)' }}>
+            Personal
           </p>
-        )}
+          <h1 className="text-3xl font-light tracking-tight" style={{ color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+            My Wardrobe
+          </h1>
+          {!loading && (
+            <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
+              {items.length} {items.length === 1 ? 'item' : 'items'}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* ── Filter Pills ── */}

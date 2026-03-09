@@ -4,7 +4,9 @@ import { motion } from 'framer-motion'
 import { Camera, Upload, CheckCircle2, RotateCcw, Barcode } from 'lucide-react'
 import axios from 'axios'
 import BarcodeScanner from '../components/BarcodeScanner'
+import SplineScene from '../components/SplineScene'
 import { parseJson } from '../lib/utils'
+import { SCENES } from '../lib/scenes'
 
 const API_URL = import.meta.env.VITE_API_URL
 
@@ -454,6 +456,19 @@ export default function AddItem() {
         <p className="text-xs tracking-[0.28em] uppercase mb-2" style={{ color: 'var(--accent)' }}>Add to Wardrobe</p>
         <h1 className="text-2xl font-light" style={{ color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>New Item</h1>
       </div>
+
+      {/* 3D scene — idle phase only, non-interactive */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6, delay: 0.2 }}
+        style={{ height: 200, pointerEvents: 'none', overflow: 'hidden' }}
+      >
+        <SplineScene
+          scene={SCENES.addItemIdle}
+          style={{ width: '100%', height: '100%' }}
+        />
+      </motion.div>
 
       <div className="px-5 flex flex-col gap-3">
         {barcodeInfo && Object.keys(barcodeInfo).length > 0 && (

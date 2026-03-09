@@ -1,11 +1,14 @@
+import { useState } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import Navbar from './components/Navbar'
+import SplashScreen from './components/SplashScreen'
 import Wardrobe from './pages/Wardrobe'
 import AddItem from './pages/AddItem'
 import Profile from './pages/Profile'
 import OutfitBuilder from './pages/OutfitBuilder'
 import Shop from './pages/Shop'
+import { SPLASH_SEEN_KEY } from './lib/scenes'
 
 const pageVariants = {
   initial: { opacity: 0, y: 14 },
@@ -37,9 +40,19 @@ function PageWrapper({ children }) {
 
 export default function App() {
   const location = useLocation()
+  // Show splash once per browser session (cleared when tab is closed)
+  const [showSplash, setShowSplash] = useState(
+    () => !sessionStorage.getItem(SPLASH_SEEN_KEY)
+  )
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
+      {/* Splash screen — renders above everything, dismisses after 2 s */}
+      <AnimatePresence>
+        {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
+      </AnimatePresence>
+
+      {/* Page routes */}
       <AnimatePresence mode="wait" initial={false}>
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={<PageWrapper><Wardrobe /></PageWrapper>} />
