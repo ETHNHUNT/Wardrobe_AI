@@ -16,8 +16,17 @@ function inferCurrentSeason() {
   return 'winter'
 }
 
-const PILL_ACTIVE = { backgroundColor: 'var(--accent)', color: '#0C0C0C', fontWeight: 600 }
-const PILL_IDLE   = { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)', border: '1px solid var(--border)' }
+const PILL_ACTIVE = {
+  backgroundColor: 'var(--accent)',
+  color: '#0C0C0C',
+  fontWeight: 600,
+  boxShadow: '0 0 10px rgba(200,169,126,0.3)',
+}
+const PILL_IDLE = {
+  backgroundColor: 'rgba(255,255,255,0.03)',
+  color: 'rgba(107,101,96,0.8)',
+  border: '1px solid rgba(255,255,255,0.07)',
+}
 
 export default function OutfitBuilder() {
   const [tab, setTab]               = useState('generate')
@@ -123,8 +132,8 @@ export default function OutfitBuilder() {
       <div className="px-5 pt-10 pb-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs tracking-[0.28em] uppercase mb-1.5" style={{ color: 'var(--accent)' }}>AI Styled</p>
-            <h1 className="text-2xl font-light" style={{ color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Outfits</h1>
+            <p className="text-[10px] tracking-[0.32em] uppercase mb-1.5" style={{ color: 'var(--accent)' }}>AI Styled</p>
+            <h1 className="text-3xl serif-display" style={{ color: 'var(--text-primary)' }}>Outfits</h1>
           </div>
           {/* Wear Today button */}
           <motion.button

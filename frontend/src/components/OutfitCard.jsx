@@ -11,7 +11,7 @@ function StarRating({ rating, outfitId, onRate, disabled }) {
   function handleClick(star) {
     if (disabled || !onRate) return
     onRate(outfitId, star)
-    // GSAP bounce on clicked star and stars below
+    // GSAP bounce on rated stars
     starsRef.current.forEach((el, i) => {
       if (!el) return
       const delay = i * 0.04
@@ -33,9 +33,9 @@ function StarRating({ rating, outfitId, onRate, disabled }) {
             disabled={disabled}
             onClick={() => handleClick(star)}
             className="transition-colors duration-150 disabled:cursor-default"
-            style={{ color: filled ? '#FBB846' : 'rgba(255,255,255,0.2)' }}
+            style={{ color: filled ? '#C8A97E' : 'rgba(255,255,255,0.15)' }}
           >
-            <Star size={16} fill={filled ? '#FBB846' : 'none'} strokeWidth={1.5} />
+            <Star size={15} fill={filled ? '#C8A97E' : 'none'} strokeWidth={1.5} />
           </button>
         )
       })}
@@ -51,21 +51,18 @@ export default function OutfitCard({ outfit, onSave, onRate, onDelete, isSaved }
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
-      className="overflow-hidden rounded-2xl"
-      style={{
-        backgroundColor: 'var(--bg-surface)',
-        border: '1px solid rgba(255,255,255,0.05)',
-        boxShadow: '0 2px 20px rgba(0,0,0,0.4)',
-      }}
+      className="overflow-hidden rounded-2xl glass-card"
+      style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.45)' }}
     >
       {/* Item thumbnails */}
       <div className="flex gap-1.5 p-2.5 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
         {items.map((item) => (
           <motion.div
             key={item.id}
-            whileHover={{ scale: 1.03 }}
+            whileHover={{ scale: 1.04 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 28 }}
             className="flex-shrink-0 w-20 h-28 rounded-xl overflow-hidden"
-            style={{ backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.06)' }}
+            style={{ backgroundColor: '#0f0f0f', border: '1px solid rgba(255,255,255,0.06)' }}
           >
             {item.photo_path && item.photo_path !== 'tmp' ? (
               <img
@@ -76,7 +73,7 @@ export default function OutfitCard({ outfit, onSave, onRate, onDelete, isSaved }
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-[10px] text-center px-1"
-                style={{ color: 'var(--text-muted)' }}>
+                style={{ color: 'rgba(107,101,96,0.6)' }}>
                 {item.category}
               </div>
             )}
@@ -87,7 +84,15 @@ export default function OutfitCard({ outfit, onSave, onRate, onDelete, isSaved }
       {/* Body */}
       <div className="px-3.5 pb-3.5 space-y-2.5">
         {outfit.reason && (
-          <p className="text-xs italic leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+          <p
+            className="text-xs italic leading-relaxed"
+            style={{
+              color: 'rgba(107,101,96,0.8)',
+              fontFamily: 'var(--font-serif)',
+              fontStyle: 'italic',
+              fontSize: '0.8rem',
+            }}
+          >
             "{outfit.reason}"
           </p>
         )}
@@ -95,14 +100,28 @@ export default function OutfitCard({ outfit, onSave, onRate, onDelete, isSaved }
         {/* Occasion + Season chips */}
         <div className="flex gap-1.5 flex-wrap">
           {outfit.occasion && (
-            <span className="text-[10px] px-2.5 py-1 rounded-full font-medium capitalize"
-              style={{ backgroundColor: 'rgba(200,169,126,0.1)', color: 'var(--accent)', border: '1px solid rgba(200,169,126,0.2)' }}>
+            <span
+              className="text-[10px] px-2.5 py-1 rounded-full font-medium capitalize"
+              style={{
+                backgroundColor: 'rgba(200,169,126,0.08)',
+                color: 'var(--accent)',
+                border: '1px solid rgba(200,169,126,0.18)',
+                letterSpacing: '0.03em',
+              }}
+            >
               {outfit.occasion}
             </span>
           )}
           {outfit.season && (
-            <span className="text-[10px] px-2.5 py-1 rounded-full font-medium capitalize"
-              style={{ backgroundColor: 'rgba(74,222,128,0.08)', color: '#4ADE80', border: '1px solid rgba(74,222,128,0.18)' }}>
+            <span
+              className="text-[10px] px-2.5 py-1 rounded-full font-medium capitalize"
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.04)',
+                color: 'rgba(107,101,96,0.9)',
+                border: '1px solid rgba(255,255,255,0.07)',
+                letterSpacing: '0.03em',
+              }}
+            >
               {outfit.season}
             </span>
           )}
@@ -122,20 +141,20 @@ export default function OutfitCard({ outfit, onSave, onRate, onDelete, isSaved }
               whileTap={{ scale: 0.88 }}
               onClick={() => onDelete && onDelete(outfit.id)}
               className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg transition-colors duration-150"
-              style={{ color: 'rgba(248,113,113,0.6)' }}
-              onMouseEnter={(e) => e.currentTarget.style.color = '#F87171'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(248,113,113,0.6)'}
+              style={{ color: 'rgba(248,113,113,0.5)' }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#F87171')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(248,113,113,0.5)')}
             >
-              <Trash2 size={13} strokeWidth={1.75} />
+              <Trash2 size={12} strokeWidth={1.75} />
             </motion.button>
           ) : (
             <motion.button
               whileTap={{ scale: 0.94 }}
               onClick={() => onSave && onSave(outfit)}
               className="flex items-center gap-1.5 text-xs font-medium px-3.5 py-1.5 rounded-xl transition-colors duration-150"
-              style={{ border: '1px solid rgba(200,169,126,0.4)', color: 'var(--accent)' }}
+              style={{ border: '1px solid rgba(200,169,126,0.35)', color: 'var(--accent)' }}
             >
-              <BookmarkPlus size={13} strokeWidth={1.75} />
+              <BookmarkPlus size={12} strokeWidth={1.75} />
               Save
             </motion.button>
           )}
