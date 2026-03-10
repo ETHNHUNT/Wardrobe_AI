@@ -10,9 +10,17 @@
     --text-muted: #6B6560;
     --accent: #C8A97E;
     --accent-soft: rgba(200, 169, 126, 0.10);
+    --accent-glow: rgba(200, 169, 126, 0.25);
     --success: #4ADE80;
     --warning: #FBB846;
     --danger: #F87171;
+
+    /* ── Luxury additions ── */
+    --font-serif: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+    --glass-bg: rgba(20, 20, 20, 0.72);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --gradient-gold: linear-gradient(135deg, #C8A97E 0%, #E8D5B0 50%, #9A7A52 100%);
+    --shimmer-light: #E8D5B0;
   }
 
   * {
@@ -77,9 +85,9 @@
   .shimmer {
     background: linear-gradient(
       90deg,
-      #1a1a1a 25%,
-      #242424 50%,
-      #1a1a1a 75%
+      #191919 25%,
+      #252525 50%,
+      #191919 75%
     );
     background-size: 200% 100%;
     animation: shimmer 1.8s ease-in-out infinite;
@@ -124,5 +132,115 @@
 
   .text-reveal {
     animation: text-reveal 0.8s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+  }
+
+  /* ══════════════════════════════════════════════════
+     LUXURY LAYER — Added for premium UI/UX upgrade
+     Inspired by 21st.dev, Spline, Shadcn UI patterns
+     ══════════════════════════════════════════════════ */
+
+  /* ── TextShimmer: gold light sweep across headings ── */
+  /* Usage: apply .text-shimmer to serif h1/h2 elements  */
+  /* Inspired by 21st.dev TextShimmer component pattern  */
+  @keyframes text-shimmer {
+    0%   { background-position: 0% 50%;   }
+    100% { background-position: 100% 50%; }
+  }
+
+  .text-shimmer {
+    background: linear-gradient(
+      110deg,
+      var(--text-primary) 33%,
+      var(--shimmer-light) 45%,
+      var(--accent) 50%,
+      var(--shimmer-light) 55%,
+      var(--text-primary) 66%
+    );
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: text-shimmer 6s linear infinite;
+  }
+
+  /* ── Luxury select (native, styled) ─────────────── */
+  /* Native select = perfect mobile UX on iOS/Android  */
+  .lux-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-color: var(--bg-elevated);
+    color: var(--text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 12px 44px 12px 16px;
+    font-size: 14px;
+    width: 100%;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    font-family: inherit;
+  }
+
+  .lux-select:focus {
+    outline: none;
+    border-color: rgba(200, 169, 126, 0.55);
+    box-shadow: 0 0 0 3px rgba(200, 169, 126, 0.06);
+  }
+
+  .lux-select option {
+    background-color: #1E1E1E;
+    color: #F0EDE8;
+  }
+
+  /* ── Luxury input focus ──────────────────────────── */
+  .lux-input {
+    background-color: var(--bg-elevated);
+    color: var(--text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 14px;
+    width: 100%;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    font-family: inherit;
+  }
+
+  .lux-input:focus {
+    outline: none;
+    border-color: rgba(200, 169, 126, 0.55);
+    box-shadow: 0 0 0 3px rgba(200, 169, 126, 0.06);
+  }
+
+  .lux-input::placeholder {
+    color: var(--text-muted);
+  }
+
+  /* ── Glass card (glassmorphism) ──────────────────── */
+  /* backdrop-blur + semi-transparent bg + subtle border */
+  .glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid var(--glass-border);
+  }
+
+  /* ── Item card gold hover ring ───────────────────── */
+  /* Applied via Framer Motion whileHover boxShadow    */
+  .item-card-hover:hover {
+    box-shadow:
+      0 0 0 1.5px rgba(200, 169, 126, 0.35),
+      0 8px 32px rgba(0, 0, 0, 0.55);
+  }
+
+  /* ── Active pill glow ────────────────────────────── */
+  .pill-active-glow {
+    box-shadow: 0 0 10px rgba(200, 169, 126, 0.3);
+  }
+
+  /* ── Serif display headings ──────────────────────── */
+  .serif-display {
+    font-family: var(--font-serif);
+    font-weight: 300;
+    font-style: italic;
+    letter-spacing: 0.01em;
   }
 }

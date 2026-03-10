@@ -5,6 +5,7 @@ import { Camera, Upload, CheckCircle2, RotateCcw, Barcode } from 'lucide-react'
 import axios from 'axios'
 import BarcodeScanner from '../components/BarcodeScanner'
 import SplineScene from '../components/SplineScene'
+import LuxSelect from '../components/LuxSelect'
 import { parseJson } from '../lib/utils'
 import { SCENES } from '../lib/scenes'
 
@@ -277,8 +278,8 @@ export default function AddItem() {
     return (
       <div className="min-h-screen pb-24" style={{ backgroundColor: 'var(--bg-primary)' }}>
         <div className="px-5 pt-10 pb-5">
-          <p className="text-xs tracking-[0.25em] uppercase mb-1.5" style={{ color: 'var(--accent)' }}>Manual Tag</p>
-          <h1 className="text-2xl font-light" style={{ color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+          <p className="text-[10px] tracking-[0.32em] uppercase mb-1.5" style={{ color: 'var(--accent)' }}>Manual Tag</p>
+          <h1 className="text-3xl serif-display" style={{ color: 'var(--text-primary)' }}>
             Tag Your Item
           </h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
@@ -295,24 +296,23 @@ export default function AddItem() {
         <form onSubmit={saveManualTags} className="px-5 pb-8 space-y-5">
           <div>
             <label className="block text-xs tracking-wider uppercase mb-2" style={{ color: 'var(--accent)' }}>Category *</label>
-            <select value={manualForm.category}
+            <LuxSelect
+              value={manualForm.category}
               onChange={(e) => setManualForm((p) => ({ ...p, category: e.target.value }))}
-              required className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none" style={INPUT_STYLE}
-            >
-              <option value="">Select category…</option>
-              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
+              options={CATEGORIES}
+              placeholder="Select category…"
+              required
+            />
           </div>
 
           <div>
             <label className="block text-xs tracking-wider uppercase mb-2" style={{ color: 'var(--text-muted)' }}>Fit Type</label>
-            <select value={manualForm.fit_type}
+            <LuxSelect
+              value={manualForm.fit_type}
               onChange={(e) => setManualForm((p) => ({ ...p, fit_type: e.target.value }))}
-              className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none" style={INPUT_STYLE}
-            >
-              <option value="">Select fit…</option>
-              {FIT_TYPES.map((f) => <option key={f} value={f}>{f}</option>)}
-            </select>
+              options={FIT_TYPES}
+              placeholder="Select fit…"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -453,8 +453,8 @@ export default function AddItem() {
   return (
     <div className="min-h-screen pb-20" style={{ backgroundColor: 'var(--bg-primary)' }}>
       <div className="px-5 pt-10 pb-6">
-        <p className="text-xs tracking-[0.28em] uppercase mb-2" style={{ color: 'var(--accent)' }}>Add to Wardrobe</p>
-        <h1 className="text-2xl font-light" style={{ color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>New Item</h1>
+        <p className="text-[10px] tracking-[0.32em] uppercase mb-2" style={{ color: 'var(--accent)' }}>Add to Wardrobe</p>
+        <h1 className="text-3xl serif-display" style={{ color: 'var(--text-primary)' }}>New Item</h1>
       </div>
 
       {/* 3D scene — idle phase only, non-interactive */}

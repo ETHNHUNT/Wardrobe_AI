@@ -20,8 +20,10 @@ const INPUT_STYLE = {
   backgroundColor: 'var(--bg-elevated)',
   color: 'var(--text-primary)',
   border: '1px solid rgba(255,255,255,0.08)',
+  transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
 }
 const INPUT_FOCUS_STYLE = '1px solid rgba(200,169,126,0.55)'
+const INPUT_FOCUS_SHADOW = '0 0 0 3px rgba(200,169,126,0.06)'
 
 export default function Profile() {
   const [form, setForm] = useState({
@@ -111,9 +113,9 @@ export default function Profile() {
     <div className="min-h-screen pb-28" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* Header */}
       <div className="px-5 pt-10 pb-6">
-        <p className="text-xs tracking-[0.28em] uppercase mb-1.5" style={{ color: 'var(--accent)' }}>Your</p>
-        <h1 className="text-2xl font-light" style={{ color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Profile</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+        <p className="text-[10px] tracking-[0.32em] uppercase mb-1.5" style={{ color: 'var(--accent)' }}>Your</p>
+        <h1 className="text-3xl serif-display" style={{ color: 'var(--text-primary)' }}>Profile</h1>
+        <p className="text-sm mt-1.5" style={{ color: 'rgba(107,101,96,0.7)' }}>
           Measurements used for outfit and shopping recommendations
         </p>
       </div>
@@ -130,13 +132,13 @@ export default function Profile() {
             onFocus={() => setFocused('name')}
             onBlur={() => setFocused(null)}
             className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none transition-colors duration-150"
-            style={{ ...INPUT_STYLE, ...(focused === 'name' ? { border: INPUT_FOCUS_STYLE } : {}) }}
+            style={{ ...INPUT_STYLE, ...(focused === 'name' ? { border: INPUT_FOCUS_STYLE, boxShadow: INPUT_FOCUS_SHADOW } : {}) }}
           />
         </div>
 
         {/* Measurements */}
         <div>
-          <h2 className="text-xs uppercase tracking-[0.2em] mb-4" style={{ color: 'var(--accent)' }}>
+          <h2 className="text-xs uppercase tracking-[0.22em] mb-4" style={{ color: 'var(--accent)', letterSpacing: '0.2em' }}>
             Body Measurements
           </h2>
           <div className="grid grid-cols-2 gap-3">
@@ -156,7 +158,7 @@ export default function Profile() {
                   min="0"
                   placeholder="0"
                   className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none transition-colors duration-150"
-                  style={{ ...INPUT_STYLE, ...(focused === key ? { border: INPUT_FOCUS_STYLE } : {}) }}
+                  style={{ ...INPUT_STYLE, ...(focused === key ? { border: INPUT_FOCUS_STYLE, boxShadow: INPUT_FOCUS_SHADOW } : {}) }}
                 />
               </div>
             ))}
@@ -179,7 +181,7 @@ export default function Profile() {
             onBlur={() => setFocused(null)}
             rows={3}
             className="w-full rounded-xl px-4 py-3 text-sm font-mono focus:outline-none transition-colors duration-150"
-            style={{ ...INPUT_STYLE, ...(focused === 'brand_sizes' ? { border: INPUT_FOCUS_STYLE } : {}) }}
+            style={{ ...INPUT_STYLE, ...(focused === 'brand_sizes' ? { border: INPUT_FOCUS_STYLE, boxShadow: INPUT_FOCUS_SHADOW } : {}) }}
             placeholder='{"Zara": "M", "H&M": "L"}'
           />
         </div>

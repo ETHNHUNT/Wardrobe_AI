@@ -4,6 +4,7 @@ import { gsap } from 'gsap'
 import { Shirt } from 'lucide-react'
 import ItemCard from '../components/ItemCard'
 import SplineScene from '../components/SplineScene'
+import TextShimmer from '../components/TextShimmer'
 import { SCENES } from '../lib/scenes'
 
 const API_URL = import.meta.env.VITE_API_URL
@@ -22,7 +23,7 @@ const CATEGORY_LABELS = {
   jacket: 'Jacket', hoodie: 'Hoodie', sweater: 'Sweater',
   jeans: 'Jeans', chinos: 'Chinos', trousers: 'Trousers',
   shorts: 'Shorts', shoes: 'Shoes', sneakers: 'Sneakers',
-  boots: 'Boots', formal_shoes: 'Formal', accessory: 'Accessories', other: 'Other',
+  boots: 'Boots', formal_shoes: 'Formal', accessory: 'Access.', other: 'Other',
 }
 const OCCASION_LABELS = { '': 'All', casual: 'Casual', work: 'Work', formal: 'Formal', sport: 'Sport', outdoor: 'Outdoor' }
 const SEASON_LABELS   = { '': 'All', spring: 'Spring', summer: 'Summer', fall: 'Fall', winter: 'Winter' }
@@ -32,43 +33,55 @@ function SkeletonCard() {
     <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)' }}>
       <div className="aspect-[3/4] shimmer" />
       <div className="p-2.5 space-y-2">
-        <div className="h-4 w-14 shimmer rounded-full" />
-        <div className="h-3 w-10 shimmer rounded" />
+        <div className="h-3 w-12 shimmer rounded-full" />
+        <div className="h-2.5 w-8 shimmer rounded" />
       </div>
     </div>
+  )
+}
+
+function FilterPill({ active, onClick, label }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium tracking-wide transition-all duration-200"
+      style={
+        active
+          ? {
+              backgroundColor: 'var(--accent)',
+              color: '#0C0C0C',
+              fontWeight: 600,
+              boxShadow: '0 0 10px rgba(200,169,126,0.3)',
+            }
+          : {
+              backgroundColor: 'rgba(255,255,255,0.03)',
+              color: 'rgba(107,101,96,0.8)',
+              border: '1px solid rgba(255,255,255,0.07)',
+            }
+      }
+    >
+      {label}
+    </button>
   )
 }
 
 function FilterPills({ options, labels, value, onChange }) {
   return (
     <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-      {options.map((opt) => {
-        const active = value === opt
-        return (
-          <button
-            key={opt}
-            onClick={() => onChange(opt)}
-            className="flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium tracking-wide transition-all duration-200"
-            style={
-              active
-                ? { backgroundColor: 'var(--accent)', color: '#0C0C0C', fontWeight: 600 }
-                : {
-                    backgroundColor: 'var(--bg-elevated)',
-                    color: 'var(--text-muted)',
-                    border: '1px solid var(--border)',
-                  }
-            }
-          >
-            {labels[opt] ?? opt}
-          </button>
-        )
-      })}
+      {options.map((opt) => (
+        <FilterPill
+          key={opt}
+          active={value === opt}
+          onClick={() => onChange(opt)}
+          label={labels[opt] ?? opt}
+        />
+      ))}
     </div>
   )
 }
 
 export default function Wardrobe() {
-  const [items, setItems]   = useState([])
+  const [items, setItems]     = useState([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState({ category: '', occasion: '', season: '' })
   const gridRef = useRef(null)
@@ -98,8 +111,8 @@ export default function Wardrobe() {
       if (cards.length) {
         gsap.fromTo(
           cards,
-          { y: 24, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.45, stagger: 0.055, ease: 'power2.out', clearProps: 'all' }
+          { y: 20, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.42, stagger: 0.05, ease: 'power2.out', clearProps: 'all' }
         )
       }
     }
@@ -112,28 +125,42 @@ export default function Wardrobe() {
   return (
     <div className="min-h-screen pb-24" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* ── Hero Header ── */}
-      <div className="relative overflow-hidden" style={{ height: 180 }}>
-        {/* 3D scene sits behind the text, non-interactive */}
+      <div className="relative overflow-hidden" style={{ height: 190 }}>
+        {/* 3D scene — non-interactive, blends with dark background */}
         <SplineScene
           scene={SCENES.wardrobeHero}
           style={{
             position: 'absolute', inset: 0,
             width: '100%', height: '100%',
             pointerEvents: 'none',
-            opacity: 0.75,
+            opacity: 0.7,
             mixBlendMode: 'lighten',
           }}
         />
-        {/* Text always renders on top regardless of whether Spline loads */}
+
+        {/* Gradient fade at bottom of hero */}
+        <div
+          className="absolute bottom-0 left-0 right-0"
+          style={{
+            height: 80,
+            background: 'linear-gradient(to top, var(--bg-primary) 0%, transparent 100%)',
+            pointerEvents: 'none',
+          }}
+        />
+
+        {/* Text always renders on top regardless of Spline load status */}
         <div className="relative z-10 px-5 pt-12 pb-5">
-          <p className="text-reveal text-xs tracking-[0.28em] uppercase mb-2" style={{ color: 'var(--accent)' }}>
+          <p className="text-reveal text-[10px] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--accent)' }}>
             Personal
           </p>
-          <h1 className="text-3xl font-light tracking-tight" style={{ color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+          <TextShimmer
+            as="h1"
+            className="text-3xl serif-display"
+          >
             My Wardrobe
-          </h1>
+          </TextShimmer>
           {!loading && (
-            <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
+            <p className="mt-1.5 text-xs" style={{ color: 'rgba(107,101,96,0.7)', letterSpacing: '0.03em' }}>
               {items.length} {items.length === 1 ? 'item' : 'items'}
             </p>
           )}
@@ -141,7 +168,7 @@ export default function Wardrobe() {
       </div>
 
       {/* ── Filter Pills ── */}
-      <div className="px-5 pb-4 space-y-3">
+      <div className="px-5 pb-4 space-y-2.5">
         <FilterPills
           options={CATEGORIES}
           labels={CATEGORY_LABELS}
@@ -150,48 +177,30 @@ export default function Wardrobe() {
         />
         <div className="flex gap-2.5">
           <div className="flex gap-2 overflow-x-auto flex-1" style={{ scrollbarWidth: 'none' }}>
-            {OCCASIONS.map((opt) => {
-              const active = filters.occasion === opt
-              return (
-                <button
-                  key={opt}
-                  onClick={() => handleFilter('occasion', opt)}
-                  className="flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200"
-                  style={
-                    active
-                      ? { backgroundColor: 'rgba(200,169,126,0.18)', color: 'var(--accent)', border: '1px solid rgba(200,169,126,0.35)' }
-                      : { backgroundColor: 'var(--bg-surface)', color: 'var(--text-muted)', border: '1px solid var(--border)' }
-                  }
-                >
-                  {OCCASION_LABELS[opt]}
-                </button>
-              )
-            })}
+            {OCCASIONS.map((opt) => (
+              <FilterPill
+                key={opt}
+                active={filters.occasion === opt}
+                onClick={() => handleFilter('occasion', opt)}
+                label={OCCASION_LABELS[opt]}
+              />
+            ))}
           </div>
           <div className="flex gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-            {SEASONS.map((opt) => {
-              const active = filters.season === opt
-              return (
-                <button
-                  key={opt}
-                  onClick={() => handleFilter('season', opt)}
-                  className="flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200"
-                  style={
-                    active
-                      ? { backgroundColor: 'rgba(200,169,126,0.18)', color: 'var(--accent)', border: '1px solid rgba(200,169,126,0.35)' }
-                      : { backgroundColor: 'var(--bg-surface)', color: 'var(--text-muted)', border: '1px solid var(--border)' }
-                  }
-                >
-                  {SEASON_LABELS[opt]}
-                </button>
-              )
-            })}
+            {SEASONS.map((opt) => (
+              <FilterPill
+                key={opt}
+                active={filters.season === opt}
+                onClick={() => handleFilter('season', opt)}
+                label={SEASON_LABELS[opt]}
+              />
+            ))}
           </div>
         </div>
       </div>
 
-      {/* ── Thin divider ── */}
-      <div className="mx-5 mb-4" style={{ height: '1px', backgroundColor: 'var(--border)' }} />
+      {/* Thin divider */}
+      <div className="mx-5 mb-4" style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.05)' }} />
 
       {/* ── Grid ── */}
       <div className="px-4">
@@ -201,11 +210,23 @@ export default function Wardrobe() {
           </div>
         ) : items.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-28 text-center">
-            <Shirt size={56} strokeWidth={1} style={{ color: 'var(--text-muted)', opacity: 0.4 }} className="mb-5" />
-            <h2 className="text-base font-light mb-1.5" style={{ color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
+            <Shirt
+              size={52}
+              strokeWidth={1}
+              style={{ color: 'rgba(107,101,96,0.3)', marginBottom: 20 }}
+            />
+            <h2
+              className="text-lg font-light mb-2"
+              style={{
+                fontFamily: 'var(--font-serif)',
+                fontStyle: 'italic',
+                color: 'rgba(240,237,232,0.7)',
+                letterSpacing: '0.02em',
+              }}
+            >
               Your wardrobe is empty
             </h2>
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            <p className="text-sm" style={{ color: 'rgba(107,101,96,0.6)' }}>
               Tap + to add your first item
             </p>
           </div>

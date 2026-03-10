@@ -112,9 +112,9 @@ export default function Shop() {
     <div className="min-h-screen pb-24" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* ── Header ── */}
       <div className="px-5 pt-10 pb-6">
-        <p className="text-xs tracking-[0.28em] uppercase mb-1.5" style={{ color: 'var(--accent)' }}>Intelligence</p>
-        <h1 className="text-2xl font-light" style={{ color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Shopping</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Wardrobe gap analysis &amp; recommendations</p>
+        <p className="text-[10px] tracking-[0.32em] uppercase mb-1.5" style={{ color: 'var(--accent)' }}>Intelligence</p>
+        <h1 className="text-3xl serif-display" style={{ color: 'var(--text-primary)' }}>Shopping</h1>
+        <p className="text-sm mt-1.5" style={{ color: 'rgba(107,101,96,0.7)' }}>Wardrobe gap analysis &amp; recommendations</p>
       </div>
 
       <div className="px-5 space-y-6">
@@ -232,8 +232,7 @@ export default function Shop() {
             Shopping Suggestions
           </h2>
 
-          <div className="rounded-2xl p-4 space-y-3 mb-4"
-            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid rgba(255,255,255,0.05)' }}>
+          <div className="glass-card rounded-2xl p-4 space-y-3 mb-4">
             <div>
               <label className="block text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>
                 Brand preference (optional)

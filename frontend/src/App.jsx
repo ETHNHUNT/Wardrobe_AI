@@ -3,6 +3,7 @@ import { Routes, Route, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import Navbar from './components/Navbar'
 import SplashScreen from './components/SplashScreen'
+import NoiseOverlay from './components/NoiseOverlay'
 import Wardrobe from './pages/Wardrobe'
 import AddItem from './pages/AddItem'
 import Profile from './pages/Profile'
@@ -11,7 +12,7 @@ import Shop from './pages/Shop'
 import { SPLASH_SEEN_KEY } from './lib/scenes'
 
 const pageVariants = {
-  initial: { opacity: 0, y: 14 },
+  initial: { opacity: 0, y: 12 },
   animate: {
     opacity: 1,
     y: 0,
@@ -19,7 +20,7 @@ const pageVariants = {
   },
   exit: {
     opacity: 0,
-    y: -8,
+    y: -6,
     transition: { duration: 0.16, ease: [0.25, 0.1, 0.25, 1] },
   },
 }
@@ -40,14 +41,16 @@ function PageWrapper({ children }) {
 
 export default function App() {
   const location = useLocation()
-  // Show splash once per browser session (cleared when tab is closed)
   const [showSplash, setShowSplash] = useState(
     () => !sessionStorage.getItem(SPLASH_SEEN_KEY)
   )
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
-      {/* Splash screen — renders above everything, dismisses after 2 s */}
+      {/* Grain texture overlay — luxury depth (z-index 1, pointer-events-none) */}
+      <NoiseOverlay />
+
+      {/* Splash screen — renders above everything, dismisses after 2.4 s */}
       <AnimatePresence>
         {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
       </AnimatePresence>
