@@ -73,11 +73,11 @@ export default function Shop() {
 
   useEffect(() => { fetchGaps() }, [])
 
-  async function fetchGaps() {
+  async function fetchGaps({ force = false } = {}) {
     setLoading(true)
     setError(null)
     try {
-      const res = await axios.get(`${API}/shop/gaps`)
+      const res = await axios.get(`${API}/shop/gaps`, { params: force ? { force: true } : {} })
       setGapsData(res.data)
     } catch {
       setError('Could not load gap analysis. Make sure the backend is running.')
@@ -126,7 +126,7 @@ export default function Shop() {
             </h2>
             {!loading && (
               <motion.button
-                onClick={fetchGaps}
+                onClick={() => fetchGaps({ force: true })}
                 whileTap={{ scale: 0.9 }}
                 className="flex items-center gap-1.5 text-xs"
                 style={{ color: 'var(--text-muted)' }}

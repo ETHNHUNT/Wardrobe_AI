@@ -89,7 +89,13 @@ def list_outfits(
     outfits = session.exec(query).all()
 
     # Collect all item IDs across all outfits, fetch in a single query
-    all_ids = [iid for o in outfits for iid in json.loads(o.item_ids)]
+    def _parse_ids(raw: str) -> list[int]:
+        try:
+            return json.loads(raw or "[]")
+        except json.JSONDecodeError:
+            return []
+
+    all_ids = [iid for o in outfits for iid in _parse_ids(o.item_ids)]
     if all_ids:
         item_map = {
             i.id: i
@@ -100,7 +106,7 @@ def list_outfits(
 
     result = []
     for outfit in outfits:
-        item_ids = json.loads(outfit.item_ids)
+        item_ids = _parse_ids(outfit.item_ids)
         items = [item_map[iid] for iid in item_ids if iid in item_map]
         result.append(
             {

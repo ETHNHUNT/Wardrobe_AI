@@ -64,8 +64,14 @@ export default function AddItem() {
       streamRef.current = stream
       if (videoRef.current) videoRef.current.srcObject = stream
       setPhase('camera')
-    } catch {
-      fileInputRef.current?.click()
+    } catch (err) {
+      const isPermission = err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError'
+      if (isPermission) {
+        setError('Camera permission denied. Please allow camera access in your browser settings, or use "Upload from Gallery" below.')
+      } else {
+        // No camera available — silently fall back to file picker
+        fileInputRef.current?.click()
+      }
     }
   }
 
@@ -188,9 +194,9 @@ export default function AddItem() {
         brand:      manualForm.brand      || null,
         size_label: manualForm.size_label || null,
         notes:      manualForm.notes      || null,
-        colors:     JSON.stringify(manualForm.colors ? manualForm.colors.split(',').map((s) => s.trim()) : []),
-        occasions:  JSON.stringify(manualForm.occasions),
-        seasons:    JSON.stringify(manualForm.seasons),
+        colors:     manualForm.colors ? manualForm.colors.split(',').map((s) => s.trim()).filter(Boolean) : [],
+        occasions:  manualForm.occasions,
+        seasons:    manualForm.seasons,
       }
       await axios.put(`${API_URL}/items/${savedItem.id}`, payload)
       setPhase('done')

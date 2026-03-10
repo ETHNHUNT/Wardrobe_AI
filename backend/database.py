@@ -1,6 +1,9 @@
+from pathlib import Path
+
 from sqlmodel import SQLModel, create_engine, Session
 
-DATABASE_URL = "sqlite:///wardrobe.db"
+_HERE = Path(__file__).parent
+DATABASE_URL = f"sqlite:///{_HERE / 'wardrobe.db'}"
 engine = create_engine(
     DATABASE_URL,
     echo=False,

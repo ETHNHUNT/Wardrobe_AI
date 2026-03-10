@@ -3,6 +3,7 @@ import axios from 'axios'
 import { gsap } from 'gsap'
 import { Shirt } from 'lucide-react'
 import ItemCard from '../components/ItemCard'
+import ItemDetailModal from '../components/ItemDetailModal'
 import SplineScene from '../components/SplineScene'
 import TextShimmer from '../components/TextShimmer'
 import { SCENES } from '../lib/scenes'
@@ -81,24 +82,29 @@ function FilterPills({ options, labels, value, onChange }) {
 }
 
 export default function Wardrobe() {
-  const [items, setItems]     = useState([])
-  const [loading, setLoading] = useState(true)
-  const [filters, setFilters] = useState({ category: '', occasion: '', season: '' })
+  const [items, setItems]           = useState([])
+  const [loading, setLoading]       = useState(true)
+  const [filters, setFilters]       = useState({ category: '', occasion: '', season: '' })
+  const [selectedItem, setSelectedItem] = useState(null)
   const gridRef = useRef(null)
 
-  useEffect(() => { fetchItems() }, [filters])
+  useEffect(() => {
+    const controller = new AbortController()
+    fetchItems(controller.signal)
+    return () => controller.abort()
+  }, [filters]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function fetchItems() {
+  async function fetchItems(signal) {
     setLoading(true)
     try {
       const params = {}
       if (filters.category) params.category = filters.category
       if (filters.occasion) params.occasion = filters.occasion
       if (filters.season)   params.season   = filters.season
-      const { data } = await axios.get(`${API_URL}/items`, { params })
+      const { data } = await axios.get(`${API_URL}/items`, { params, signal })
       setItems(data)
     } catch (err) {
-      console.error('Failed to fetch items:', err)
+      if (!axios.isCancel(err)) console.error('Failed to fetch items:', err)
     } finally {
       setLoading(false)
     }
@@ -202,6 +208,22 @@ export default function Wardrobe() {
       {/* Thin divider */}
       <div className="mx-5 mb-4" style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.05)' }} />
 
+      {/* ── Item Detail Modal ── */}
+      {selectedItem && (
+        <ItemDetailModal
+          item={selectedItem}
+          onClose={() => setSelectedItem(null)}
+          onDeleted={(id) => {
+            setItems((prev) => prev.filter((i) => i.id !== id))
+            setSelectedItem(null)
+          }}
+          onUpdated={(updated) => {
+            setItems((prev) => prev.map((i) => i.id === updated.id ? updated : i))
+            setSelectedItem(updated)
+          }}
+        />
+      )}
+
       {/* ── Grid ── */}
       <div className="px-4">
         {loading ? (
@@ -234,7 +256,13 @@ export default function Wardrobe() {
           <div ref={gridRef} className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {items.map((item) => (
               <div key={item.id} className="item-card">
-                <ItemCard item={item} />
+                <ItemCard
+                  item={item}
+                  onClick={(i) => setSelectedItem(i)}
+                  onWorn={(id, count) =>
+                    setItems((prev) => prev.map((i) => i.id === id ? { ...i, times_worn: count } : i))
+                  }
+                />
               </div>
             ))}
           </div>
