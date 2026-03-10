@@ -54,7 +54,7 @@ async def tag_clothing_image(image_path: str) -> dict:
             "options": {"temperature": 0.1},
         }
 
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(OLLAMA_URL, json=payload)
 
         raw = resp.json()["message"]["content"]
@@ -103,7 +103,7 @@ Return ONLY JSON array:
     }
 
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(OLLAMA_URL, json=payload)
         raw = resp.json()["message"]["content"]
         result = parse_ai_json(raw)
@@ -139,7 +139,7 @@ Return ONLY JSON:
     }
 
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(OLLAMA_URL, json=payload)
         raw = resp.json()["message"]["content"]
         result = parse_ai_json(raw)

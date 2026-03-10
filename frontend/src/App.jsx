@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import Navbar from './components/Navbar'
 import SplashScreen from './components/SplashScreen'
 import NoiseOverlay from './components/NoiseOverlay'
+import ErrorBoundary from './components/ErrorBoundary'
 import Wardrobe from './pages/Wardrobe'
 import AddItem from './pages/AddItem'
 import Profile from './pages/Profile'
@@ -58,11 +59,11 @@ export default function App() {
       {/* Page routes */}
       <AnimatePresence mode="wait" initial={false}>
         <Routes location={location} key={location.pathname}>
-          <Route path="/" element={<PageWrapper><Wardrobe /></PageWrapper>} />
-          <Route path="/add" element={<PageWrapper><AddItem /></PageWrapper>} />
-          <Route path="/outfits" element={<PageWrapper><OutfitBuilder /></PageWrapper>} />
-          <Route path="/shop" element={<PageWrapper><Shop /></PageWrapper>} />
-          <Route path="/profile" element={<PageWrapper><Profile /></PageWrapper>} />
+          <Route path="/" element={<PageWrapper><ErrorBoundary><Wardrobe /></ErrorBoundary></PageWrapper>} />
+          <Route path="/add" element={<PageWrapper><ErrorBoundary><AddItem /></ErrorBoundary></PageWrapper>} />
+          <Route path="/outfits" element={<PageWrapper><ErrorBoundary><OutfitBuilder /></ErrorBoundary></PageWrapper>} />
+          <Route path="/shop" element={<PageWrapper><ErrorBoundary><Shop /></ErrorBoundary></PageWrapper>} />
+          <Route path="/profile" element={<PageWrapper><ErrorBoundary><Profile /></ErrorBoundary></PageWrapper>} />
         </Routes>
       </AnimatePresence>
       <Navbar />

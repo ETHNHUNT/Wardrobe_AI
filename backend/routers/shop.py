@@ -14,13 +14,14 @@ router = APIRouter()
 # Simple in-memory cache for analyze_gaps — avoids a second 30-60s Ollama call
 # when /shop/gaps and /shop/suggest are both called on the same page load.
 _gaps_cache: dict = {"result": None, "item_count": -1, "ts": 0.0}
-_GAPS_CACHE_TTL = 90  # seconds
+_GAPS_CACHE_TTL = 30  # seconds
 
 
-async def _get_gaps_cached(items: list[dict]) -> dict:
+async def _get_gaps_cached(items: list[dict], *, force: bool = False) -> dict:
     now = time.monotonic()
     if (
-        _gaps_cache["item_count"] == len(items)
+        not force
+        and _gaps_cache["item_count"] == len(items)
         and now - _gaps_cache["ts"] < _GAPS_CACHE_TTL
         and _gaps_cache["result"] is not None
     ):
@@ -31,7 +32,7 @@ async def _get_gaps_cached(items: list[dict]) -> dict:
 
 
 @router.get("/shop/gaps")
-async def get_gaps(session: Session = Depends(get_session)):
+async def get_gaps(force: bool = False, session: Session = Depends(get_session)):
     """
     Return wardrobe coverage analysis.
     - local_coverage: instant count per occasion, no AI needed
@@ -39,7 +40,7 @@ async def get_gaps(session: Session = Depends(get_session)):
     """
     items = [i.model_dump() for i in session.exec(select(ClothingItem)).all()]
     local_coverage = compute_local_coverage(items)
-    ai_result = await _get_gaps_cached(items)
+    ai_result = await _get_gaps_cached(items, force=force)
     return {
         "total_items": len(items),
         "local_coverage": local_coverage,

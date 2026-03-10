@@ -19,24 +19,28 @@ IMAGES_DIR = Path("data/images")
 
 class ClothingItemUpdate(BaseModel):
     category: str | None = None
-    colors: str | None = None
-    tags: str | None = None
+    colors: list[str] | None = None
+    tags: list[str] | None = None
     brand: str | None = None
     size_label: str | None = None
     fit_type: str | None = None
-    occasions: str | None = None
-    seasons: str | None = None
+    occasions: list[str] | None = None
+    seasons: list[str] | None = None
     notes: str | None = None
 
 
 def _apply_tags(item: ClothingItem, tags: dict, *, preserve_existing: bool = False) -> None:
-    """Write AI tag fields onto a ClothingItem in place."""
-    item.category  = tags.get("category",  item.category  if preserve_existing else "other")
-    item.fit_type  = tags.get("fit_type",  item.fit_type  if preserve_existing else None)
-    item.colors    = json.dumps(tags.get("colors",    []))
-    item.tags      = json.dumps(tags.get("tags",      []))
-    item.occasions = json.dumps(tags.get("occasions", []))
-    item.seasons   = json.dumps(tags.get("seasons",   []))
+    """Write AI tag fields onto a ClothingItem in place.
+
+    When preserve_existing=True (re-tag flow), only overwrite a field if the AI
+    returned a non-empty value for it; otherwise keep whatever is already stored.
+    """
+    item.category = tags.get("category", item.category if preserve_existing else "other")
+    item.fit_type = tags.get("fit_type", item.fit_type if preserve_existing else None)
+    for field in ("colors", "tags", "occasions", "seasons"):
+        ai_val = tags.get(field)
+        if ai_val or not preserve_existing:
+            setattr(item, field, json.dumps(ai_val or []))
 
 
 @router.post("/items")
@@ -174,8 +178,12 @@ def update_item(item_id: int, data: ClothingItemUpdate, session: Session = Depen
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
+    _LIST_FIELDS = {"colors", "tags", "occasions", "seasons"}
     for field, value in data.model_dump(exclude_none=True).items():
-        setattr(item, field, value)
+        if field in _LIST_FIELDS:
+            setattr(item, field, json.dumps(value))
+        else:
+            setattr(item, field, value)
 
     session.add(item)
     session.commit()
