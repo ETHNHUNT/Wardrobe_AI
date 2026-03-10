@@ -5,20 +5,29 @@
 A personal, locally-hosted AI wardrobe manager. The user (Vipin) runs this on his Windows PC;
 his phone connects to it over the same WiFi. No cloud hosting. Zero ongoing cost. Not public. Single user only.
 
+**Current State: v1.0 — All 4 build phases complete and running.**
+
 -----
 
 ## Tech Stack (Non-Negotiable)
 
-|Layer           |Choice                                 |Reason                                                     |
-|----------------|---------------------------------------|-----------------------------------------------------------|
-|Backend         |Python 3.10+ / FastAPI                 |Async, fast, works well with Ollama                        |
-|Frontend        |React + Vite + Tailwind CSS            |Mobile-friendly, fast dev                                  |
-|Database        |SQLite via SQLModel                    |Zero setup, single file, personal use                      |
-|AI Primary      |Ollama qwen3.5:2b (2.7GB)              |Local, free, native multimodal, fits 4GB VRAM with headroom|
-|AI Fallback     |Google Gemini 2.5 Flash-Lite free tier |For photos qwen3.5:2b struggles with; 1000 req/day free    |
-|Image Storage   |Local filesystem (backend/data/images/)|Simple, no cloud                                           |
-|Barcode Lookup  |UPCItemDB API free no auth             |https://api.upcitemdb.com/prod/trial/lookup?upc={upc}      |
-|Barcode Scanning|@zxing/library npm                     |Phone camera barcode reading in browser                    |
+| Layer              | Choice                                    | Version / Reason                                              |
+|--------------------|-------------------------------------------|---------------------------------------------------------------|
+| Backend            | Python 3.10+ / FastAPI                    | Async, fast, works well with Ollama                           |
+| Frontend           | React + Vite + Tailwind CSS               | Mobile-friendly, fast dev                                     |
+| React              | React 19.2 / React Router DOM 7.13        | Latest React with file-based routing                          |
+| Build Tool         | Vite 7.3.1                                | Fast HMR, @tailwindcss/vite plugin                            |
+| Database           | SQLite via SQLModel                       | Zero setup, single file, personal use                         |
+| AI Primary         | Ollama qwen3.5:2b (2.7GB)                 | Local, free, native multimodal, fits 4GB VRAM with headroom   |
+| AI Fallback        | Google Gemini 2.5 Flash-Lite free tier    | Backlog — not yet implemented in code                         |
+| Image Storage      | Local filesystem (backend/data/images/)   | Simple, no cloud                                              |
+| Barcode Lookup     | UPCItemDB API free no auth                | https://api.upcitemdb.com/prod/trial/lookup?upc={upc}         |
+| Barcode Scanning   | @zxing/library 0.21.3                     | Phone camera barcode reading in browser                       |
+| Animations         | Framer Motion 12.35 + GSAP 3.14           | Page transitions + stagger entrance animations                |
+| 3D Scenes          | @splinetool/react-spline 4.1.0            | Luxury splash + hero scenes                                   |
+| Icons              | lucide-react 0.577 + @iconify/react       | UI icons throughout                                           |
+| HTTP Client        | Axios 1.13.6                              | All frontend API calls                                        |
+| Class Utilities    | clsx + tailwind-merge                     | Safe Tailwind class merging via `cn()` helper                 |
 
 -----
 
@@ -37,41 +46,59 @@ his phone connects to it over the same WiFi. No cloud hosting. Zero ongoing cost
 ```
 wardrobeai/
 ├── CLAUDE.md
+├── .plan.md                             # Spline 3D integration plan (historical)
+├── test_ollama_tagging.py               # Standalone Ollama tagging test script
 ├── backend/
-│   ├── main.py                      # FastAPI app entry point
-│   ├── database.py                  # SQLite + SQLModel setup
+│   ├── main.py                          # FastAPI app entry point
+│   ├── database.py                      # SQLite + SQLModel setup
+│   ├── wardrobe.db                      # SQLite DB (auto-created on first run)
 │   ├── models/
-│   │   ├── user.py                  # UserProfile model
-│   │   ├── item.py                  # ClothingItem model
-│   │   └── outfit.py               # SavedOutfit model
+│   │   ├── user.py                      # UserProfile model
+│   │   ├── item.py                      # ClothingItem model
+│   │   └── outfit.py                    # SavedOutfit model
 │   ├── routers/
-│   │   ├── profile.py               # GET/POST /profile
-│   │   ├── items.py                 # CRUD /items
-│   │   ├── outfits.py               # GET/POST /outfits
-│   │   └── shop.py                  # GET /shop/gaps, /shop/suggest
+│   │   ├── profile.py                   # GET/POST /profile
+│   │   ├── items.py                     # CRUD /items + worn tracking + barcode + retag
+│   │   ├── outfits.py                   # GET/POST /outfits + AI generation
+│   │   └── shop.py                      # GET /shop/gaps, /shop/suggest (with 30s cache)
 │   ├── services/
-│   │   ├── ai_service.py            # Ollama calls (vision + text)
-│   │   ├── barcode_service.py       # UPC lookup
-│   │   └── shopping_service.py      # Gap analysis + suggestions
+│   │   ├── ai_service.py                # Ollama calls (vision + text)
+│   │   ├── barcode_service.py           # UPC lookup via UPCItemDB
+│   │   └── shopping_service.py          # Gap analysis + size inference + Google Shopping URLs
 │   ├── data/
-│   │   └── images/                  # Stored clothing photos
+│   │   └── images/                      # Stored clothing photos: {id}_{uuid}.jpg
 │   └── requirements.txt
 ├── frontend/
-│   ├── src/
-│   │   ├── pages/
-│   │   │   ├── Wardrobe.jsx
-│   │   │   ├── AddItem.jsx
-│   │   │   ├── OutfitBuilder.jsx
-│   │   │   ├── Profile.jsx
-│   │   │   └── Shop.jsx
-│   │   ├── components/
-│   │   │   ├── ItemCard.jsx
-│   │   │   ├── OutfitCard.jsx
-│   │   │   ├── BarcodeScanner.jsx
-│   │   │   └── Navbar.jsx
-│   │   └── App.jsx
-│   ├── .env
-│   └── package.json
+│   ├── vite.config.js
+│   ├── .env                             # VITE_API_URL=http://{LAN_IP}:8000
+│   ├── public/
+│   │   └── manifest.json               # PWA manifest (Add to Home Screen)
+│   └── src/
+│       ├── main.jsx                     # React entry point
+│       ├── index.css                    # Tailwind + full luxury theme (CSS variables)
+│       ├── App.jsx                      # Router + splash + page transitions
+│       ├── lib/
+│       │   ├── utils.js                 # cn() class merger, parseJson() safe parser
+│       │   └── scenes.js                # Spline 3D scene URL constants
+│       ├── pages/
+│       │   ├── Wardrobe.jsx             # Grid view + filters + 3D hero + GSAP animations
+│       │   ├── AddItem.jsx              # 6-phase upload flow (idle/camera/preview/upload/form/done)
+│       │   ├── OutfitBuilder.jsx        # Generate tab + Saved tab + "Wear Today?"
+│       │   ├── Profile.jsx              # Body measurements + brand sizes
+│       │   └── Shop.jsx                 # Coverage rings + gap cards + shopping suggestions
+│       └── components/
+│           ├── Navbar.jsx               # Fixed bottom nav (5 tabs)
+│           ├── ItemCard.jsx             # Grid card: image, brand, colors, worn badge, mark worn
+│           ├── ItemDetailModal.jsx      # Full-screen modal: view/edit/retag/delete
+│           ├── OutfitCard.jsx           # Outfit card: thumbnails, reason, rating stars
+│           ├── BarcodeScanner.jsx       # @zxing/library camera barcode reader
+│           ├── SplineScene.jsx          # Lazy-loaded Spline 3D wrapper with error boundary
+│           ├── SplashScreen.jsx         # First-launch splash (sessionStorage gated, auto-dismiss 2.4s)
+│           ├── ErrorBoundary.jsx        # React class error boundary
+│           ├── TextShimmer.jsx          # Gold shimmer sweep animation on headings
+│           ├── NoiseOverlay.jsx         # Grain texture overlay (pointer-events none)
+│           ├── GlassCard.jsx            # Reusable glassmorphism card container
+│           └── LuxSelect.jsx            # Native <select> styled with Tailwind + gold focus ring
 └── README.md
 ```
 
@@ -102,7 +129,7 @@ class UserProfile(SQLModel, table=True):
 ```python
 class ClothingItem(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    photo_path: str                          # Relative path: data/images/{id}_{ts}.jpg
+    photo_path: str                          # Filename only: {id}_{uuid}.jpg in data/images/
     category: str                            # tshirt, shirt, jeans, chinos, jacket, etc.
     colors: str = "[]"                       # JSON array: ["navy", "white"]
     tags: str = "[]"                         # JSON array: ["slim-fit", "cotton", "striped"]
@@ -112,7 +139,7 @@ class ClothingItem(SQLModel, table=True):
     occasions: str = "[]"                    # JSON array: ["casual", "work", "formal"]
     seasons: str = "[]"                      # JSON array: ["spring", "summer", "fall", "winter"]
     date_added: datetime = Field(default_factory=datetime.utcnow)
-    times_worn: int = 0
+    times_worn: int = 0                      # Incremented by POST /items/{id}/worn
     notes: str | None = None
 ```
 
@@ -137,15 +164,11 @@ class SavedOutfit(SQLModel, table=True):
 ```python
 OLLAMA_URL = "http://localhost:11434/api/chat"
 MODEL = "qwen3.5:2b"       # Local, 2.7GB, vision-capable, fits GTX 1050Ti 4GB VRAM
-USE_LOCAL_AI = True         # Set False to fallback to Gemini Flash-Lite
-
-GEMINI_API_KEY = ""         # Optional: set in .env if using fallback
-GEMINI_MODEL = "gemini-2.5-flash-lite"
 ```
 
 ### CRITICAL: Strip Thinking Tags
 
-qwen3.5:2b outputs <think>…</think> blocks before answering. Always strip them:
+qwen3.5:2b outputs `<think>…</think>` blocks before answering. Always strip them:
 
 ```python
 import re, json
@@ -160,6 +183,33 @@ def parse_ai_json(raw: str) -> dict:
     except json.JSONDecodeError:
         return {}
 ```
+
+### Re-tagging: preserve_existing mode
+
+When re-tagging an existing item (`POST /items/{id}/tag`), only overwrite AI fields if the
+new result is non-empty — never clobber manually edited data:
+
+```python
+def _apply_tags(item, tags, *, preserve_existing=False):
+    item.category = tags.get("category", item.category if preserve_existing else "other")
+    item.fit_type = tags.get("fit_type", item.fit_type if preserve_existing else None)
+    for field in ("colors", "tags", "occasions", "seasons"):
+        ai_val = tags.get(field)
+        if ai_val or not preserve_existing:
+            setattr(item, field, json.dumps(ai_val or []))
+```
+
+### Gap Analysis Cache
+
+`/shop/gaps` and `/shop/suggest` share a 30-second in-memory cache to avoid a second
+30–60s Ollama call when both are hit on the same page load:
+
+```python
+_gaps_cache: dict = {"result": None, "item_count": -1, "ts": 0.0}
+_GAPS_CACHE_TTL = 30  # seconds
+```
+
+Force-refresh via `GET /shop/gaps?force=true`.
 
 ### Vision Tagging Prompt
 
@@ -193,7 +243,7 @@ async def tag_clothing_image(image_path: str) -> dict:
         "stream": False,
         "options": {"temperature": 0.1}
     }
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=120.0) as client:
         resp = await client.post(OLLAMA_URL, json=payload)
         raw = resp.json()["message"]["content"]
     return parse_ai_json(raw)   # Empty dict = caller shows manual form
@@ -203,58 +253,19 @@ async def tag_clothing_image(image_path: str) -> dict:
 
 ```python
 async def generate_outfits(items: list[dict], occasion: str, season: str) -> list[dict]:
-    prompt = f"""You are a personal stylist. Suggest exactly 3 outfits for occasion: {occasion}, season: {season}.
-
-Wardrobe: {json.dumps(items)}
-
-Rules: each outfit 2-4 items, color-coordinate, match occasion and season.
-Return ONLY JSON array:
-[
-  {{"items": [1, 3], "reason": "brief note"}},
-  {{"items": [2, 5, 7], "reason": "brief note"}},
-  {{"items": [1, 4, 6], "reason": "brief note"}}
-]"""
-
-    payload = {
-        "model": MODEL,
-        "messages": [{"role": "user", "content": prompt}],
-        "stream": False,
-        "options": {"temperature": 0.3}
-    }
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        resp = await client.post(OLLAMA_URL, json=payload)
-        raw = resp.json()["message"]["content"]
-    result = parse_ai_json(raw)
-    return result if isinstance(result, list) else []
+    # Sends only essential item fields: id, category, colors, occasions, seasons, fit_type
+    # Temperature 0.3 for variety
+    # Returns: [{"items": [1, 3], "reason": "brief note"}, ...]
+    # Outfits endpoint enriches IDs to full item objects before returning to frontend
 ```
 
 ### Gap Analysis Prompt
 
 ```python
 async def analyze_gaps(items: list[dict]) -> dict:
-    prompt = f"""Analyze this wardrobe for gaps by occasion and season.
-
-Wardrobe: {json.dumps(items)}
-
-Return ONLY JSON:
-{{
-  "gaps": [
-    {{"occasion": "formal", "missing_items": ["dress shirt", "formal trousers"], "priority": "high", "reason": "0 formal outfits possible"}}
-  ],
-  "coverage_score": {{"casual": 8, "work": 4, "formal": 0, "sport": 2}}
-}}"""
-
-    payload = {
-        "model": MODEL,
-        "messages": [{"role": "user", "content": prompt}],
-        "stream": False,
-        "options": {"temperature": 0.1}
-    }
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        resp = await client.post(OLLAMA_URL, json=payload)
-        raw = resp.json()["message"]["content"]
-    result = parse_ai_json(raw)
-    return result if result else {"gaps": [], "coverage_score": {}}
+    # Temperature 0.1 for consistency
+    # Returns: {"gaps": [...], "coverage_score": {...}}
+    # Each gap: {"occasion": "formal", "missing_items": [...], "priority": "high", "reason": "..."}
 ```
 
 -----
@@ -265,22 +276,66 @@ Return ONLY JSON:
 GET    /profile
 POST   /profile
 
-GET    /items                         # ?category= &occasion= &season=
-POST   /items                         # multipart/form-data: photo + optional JSON metadata
+GET    /items                          # ?category= &occasion= &season=
+POST   /items                          # multipart/form-data: photo file + optional metadata JSON string
 GET    /items/{id}
-PUT    /items/{id}
-DELETE /items/{id}
-POST   /items/barcode/{upc}           # Auto-fill from barcode
-POST   /items/{id}/tag                # Re-run AI tagging
+PUT    /items/{id}                      # Partial update (id, photo_path, date_added are protected)
+DELETE /items/{id}                      # Deletes DB row + image file from disk
+POST   /items/{id}/worn                 # Increment times_worn counter — returns {id, times_worn}
+POST   /items/{id}/tag                  # Re-run AI tagging (preserve_existing=True)
+GET    /items/barcode/{upc}             # UPCItemDB lookup — returns pre-fill data
 
-GET    /outfits                       # ?occasion= &season=
-POST   /outfits/generate              # body: {"occasion": "work", "season": "winter"}
+GET    /outfits                         # ?occasion= &season=
+POST   /outfits/generate                # body: {"occasion": "work", "season": "winter"}
 POST   /outfits
-PUT    /outfits/{id}                  # e.g. update rating
+PUT    /outfits/{id}                    # e.g. update rating
 DELETE /outfits/{id}
 
-GET    /shop/gaps
-GET    /shop/suggest                  # ?brand=zara&budget_cad=100
+GET    /shop/gaps                       # ?force=true to bypass 30s cache
+GET    /shop/suggest                    # ?brand=zara&budget_cad=100
+```
+
+-----
+
+## Frontend Theme & Design
+
+The app uses a dark luxury theme defined as CSS custom properties in `frontend/src/index.css`.
+All color usage throughout components must reference these variables — never hard-code hex values.
+
+| Variable           | Value                        | Usage                             |
+|--------------------|------------------------------|-----------------------------------|
+| `--bg-primary`     | `#0C0C0C`                   | Main background                   |
+| `--bg-surface`     | `#161616`                   | Cards, panels                     |
+| `--bg-elevated`    | `#1E1E1E`                   | Inputs, modals, dropdowns         |
+| `--text-primary`   | `#F0EDE8`                   | Main readable text                |
+| `--text-muted`     | `#6B6560`                   | Secondary / placeholder text      |
+| `--accent`         | `#C8A97E`                   | Gold — CTAs, active states, focus |
+| `--accent-soft`    | `rgba(200,169,126,0.10)`    | Subtle gold tint backgrounds      |
+| `--success`        | `#4ADE80`                   | Coverage rings ≥2, success toast  |
+| `--warning`        | `#FBB846`                   | Coverage rings =1, medium priority|
+| `--danger`         | `#F87171`                   | Coverage rings =0, high priority  |
+
+**Typography:**
+- Body: System stack — `Inter, SF Pro Text, -apple-system, sans-serif`
+- Display headings: `Cormorant Garamond` (Google Fonts), letter-spacing 0.2–0.3em
+
+**Animation libraries in use:**
+- `framer-motion`: AnimatePresence for page transitions and modal entrance
+- `gsap`: Stagger entrance animations on wardrobe grid items (fromTo opacity + y)
+- Tailwind keyframes: shimmer skeleton, text-shimmer gold sweep, ring-pulse, pulsing dots
+
+**3D Scenes (Spline):**
+- `SplineScene.jsx` wraps `@splinetool/react-spline` with `React.lazy` + error boundary
+- Respects `prefers-reduced-motion` — returns null if user opts out
+- Three placements: SplashScreen (full-screen), Wardrobe hero (180px), AddItem idle phase (200px)
+- Scene URLs stored in `frontend/src/lib/scenes.js`
+- Failed/offline scenes silently hide (no crash)
+
+**Glassmorphism pattern** (`GlassCard.jsx`):
+```css
+background: rgba(22,22,22,0.7);
+backdrop-filter: blur(12px);
+border: 1px solid rgba(200,169,126,0.12);
 ```
 
 -----
@@ -288,14 +343,18 @@ GET    /shop/suggest                  # ?brand=zara&budget_cad=100
 ## Frontend Rules
 
 - Mobile-first layout. Phone is the primary input device.
-- Tailwind CSS only, no separate CSS files.
-- Bottom nav bar on mobile: Wardrobe, Add, Outfits, Shop, Profile
-- Wardrobe grid: 2 columns on mobile, 4 on desktop
-- Camera: navigator.mediaDevices.getUserMedia({ video: { facingMode: “environment” } }) for rear camera
-- Barcode scanner: @zxing/library npm package
-- All API calls use: import.meta.env.VITE_API_URL
-- Show loading spinner during AI tagging (can take 10-30 seconds on first run)
-- If AI tagging returns empty dict: show manual tag form with dropdowns, never crash
+- Tailwind CSS only — no separate CSS files except `index.css` (variables + keyframes).
+- Never hard-code color values — use CSS variables (e.g. `text-[var(--accent)]`).
+- Bottom nav bar on mobile: Wardrobe, Add, Outfits, Shop, Profile.
+- Wardrobe grid: 2 columns on mobile, 4 on desktop.
+- Camera: `navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })` for rear camera.
+- Barcode scanner: `@zxing/library` npm package.
+- All API calls use: `import.meta.env.VITE_API_URL`.
+- Show loading spinner/pulsing dots during AI tagging (can take 10–30 seconds on first run).
+- If AI tagging returns empty dict: show manual tag form with dropdowns, never crash.
+- Use `cn()` from `lib/utils.js` for all conditional class merging.
+- Use native `<select>` elements (via `LuxSelect`) for all dropdowns — best iOS/Android UX.
+- Respect safe area insets: `env(safe-area-inset-bottom)` on bottom-nav padding.
 
 -----
 
@@ -331,13 +390,12 @@ ollama pull qwen3.5:2b
 
 # 2. Backend
 cd wardrobeai/backend
-pip install fastapi uvicorn sqlmodel httpx python-multipart pillow
+pip install fastapi uvicorn[standard] sqlmodel httpx python-multipart pillow python-dotenv
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
-# 3. Frontend
+# 3. Frontend (all deps already in package.json — just npm install)
 cd wardrobeai/frontend
-npm create vite@latest . -- --template react
-npm install tailwindcss @tailwindcss/vite @zxing/library axios
+npm install
 npm run dev -- --host 0.0.0.0
 
 # 4. Find PC LAN IP (Command Prompt)
@@ -348,37 +406,64 @@ ipconfig
 # VITE_API_URL=http://192.168.1.105:8000
 ```
 
+**Full frontend npm install if starting from scratch:**
+```bash
+npm create vite@latest . -- --template react
+npm install tailwindcss @tailwindcss/vite @zxing/library axios \
+  framer-motion gsap @splinetool/react-spline \
+  lucide-react @iconify/react \
+  clsx tailwind-merge react-router-dom
+```
+
 -----
 
-## Build Phase Order
+## Implementation Status
 
-### Phase 1: Core Foundation (Days 1-3)
+All 4 build phases are complete. This section records what was built.
 
-1. FastAPI + SQLite + all 3 models
-1. /profile endpoint + Profile page UI
-1. /items POST endpoint (photo upload + manual tag form)
-1. Ollama qwen3.5:2b tagging — TEST WITH REAL PHOTO FIRST before building UI
-1. Wardrobe grid view
+### Phase 1 — Core Foundation ✅
 
-### Phase 2: Intelligence (Days 4-6)
+- FastAPI + SQLite + all 3 models (UserProfile, ClothingItem, SavedOutfit)
+- `/profile` endpoint + Profile page UI (measurements + brand sizes)
+- `/items` POST (photo upload + AI tagging + manual fallback form)
+- Ollama qwen3.5:2b vision tagging with `<think>` tag stripping
+- Wardrobe grid view (2-col mobile / 4-col desktop)
 
-1. /outfits/generate endpoint
-1. Outfit Builder UI (view AI suggestions, save and rate)
-1. Filters by occasion + season
-1. “What to wear today?” quick suggestion
+### Phase 2 — Intelligence ✅
 
-### Phase 3: Shopping Intelligence (Days 7-8)
+- `/outfits/generate` endpoint (AI suggests 3 outfits, enriched with full item objects)
+- Outfit Builder UI — Generate tab + Saved tab
+- Filters by occasion + season on wardrobe and outfits
+- "Wear Today?" quick suggestion (casual + current season)
+- Star rating on saved outfits (1–5)
 
-1. Wardrobe gap analysis engine
-1. Occasion coverage scoring (flag if less than 2 outfits per occasion)
-1. Shopping page with Google Shopping search links
-1. Size recommendations from body measurements
+### Phase 3 — Shopping Intelligence ✅
 
-### Phase 4: Polish (Days 9-10)
+- Wardrobe gap analysis engine (`analyze_gaps` via Ollama)
+- Instant local coverage scoring (`compute_local_coverage` — no AI, no delay)
+- 30s gap analysis cache to avoid double Ollama calls
+- Shopping page: coverage rings + gap cards + suggestion cards with Google Shopping links
+- Size inference engine: brand preference → body measurements → category fallback
 
-1. Barcode scanning via phone camera
-1. Times worn tracking
-1. PWA manifest for Add to Home Screen on phone
+### Phase 4 — Polish ✅
+
+- Barcode scanning via `@zxing/library` (phone camera, pre-fills add form)
+- Times worn tracking: badge on ItemCard + `POST /items/{id}/worn` endpoint
+- PWA manifest (`public/manifest.json`) — Add to Home Screen on iOS/Android
+- Dark luxury theme with full CSS variable system
+- 3D Spline scenes: splash screen, wardrobe hero, AddItem idle phase
+- Framer Motion page transitions + GSAP stagger entrance animations
+- ItemDetailModal: in-place edit, re-tag, delete without leaving wardrobe grid
+- SplashScreen: sessionStorage-gated, auto-dismiss at 2.4s
+- ErrorBoundary component protecting all pages
+- NoiseOverlay grain texture for depth
+
+### Backlog (Not Yet Implemented)
+
+- Gemini 2.5 Flash-Lite fallback — referenced in config but no actual code path exists
+- Color palette gap detection (planned in PRD Phase 3)
+- Versatility score per shopping suggestion ("this chino matches 7 of your tops")
+- Dedicated outfit history view
 
 -----
 
@@ -386,10 +471,11 @@ ipconfig
 
 - Always start Ollama and backend BEFORE frontend
 - Test Ollama tagging with a real clothing photo FIRST — verify valid JSON returned
-- Image naming: {item_id}_{unix_timestamp}.jpg in backend/data/images/
-- JSON fields in SQLite: store as strings, parse with json.loads() in service layer
+- Image naming: `{item_id}_{uuid}.jpg` in `backend/data/images/`
+- JSON fields in SQLite: store as strings, parse with `json.loads()` in service layer
 - No auth needed — single user, local network only
-- Ollama first inference: 15-30 seconds while model loads into VRAM — show clear loading state
+- Ollama first inference: 15–30 seconds while model loads into VRAM — show clear loading state
 - If AI returns malformed JSON: fall back to manual tag form, NEVER crash the app
-- Handle Ollama connection error: httpx.ConnectError if Ollama is not running
-- VRAM: do not run GPU-intensive apps while using wardrobe AI
+- Handle Ollama connection error: `httpx.ConnectError` if Ollama is not running
+- VRAM: do not run GPU-intensive apps while using wardrobe AI (GTX 1050Ti 4GB is shared)
+- `preserve_existing=True` on retag: AI result never clobbers manually edited fields
