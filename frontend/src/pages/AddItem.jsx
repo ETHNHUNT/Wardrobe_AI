@@ -6,6 +6,7 @@ import axios from 'axios'
 import BarcodeScanner from '../components/BarcodeScanner'
 import SplineScene from '../components/SplineScene'
 import LuxSelect from '../components/LuxSelect'
+import PhaseIndicator from '../components/PhaseIndicator'
 import { parseJson } from '../lib/utils'
 import { SCENES } from '../lib/scenes'
 
@@ -304,6 +305,9 @@ export default function AddItem() {
   if (phase === 'uploading') {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-20" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <div className="absolute top-0 left-0 right-0">
+          <PhaseIndicator phase={phase} />
+        </div>
         {/* Concentric pulsing rings */}
         <div className="relative flex items-center justify-center mb-10" style={{ width: 140, height: 140 }}>
           <div className="absolute rounded-full ring-pulse-3" style={{ width: 132, height: 132, border: '1px solid rgba(200,169,126,0.1)' }} />
@@ -326,7 +330,8 @@ export default function AddItem() {
   if (phase === 'manual_form') {
     return (
       <div className="min-h-screen pb-24" style={{ backgroundColor: 'var(--bg-primary)' }}>
-        <div className="px-5 pt-10 pb-5">
+        <PhaseIndicator phase={phase} />
+        <div className="px-5 pt-4 pb-5">
           <p className="text-[10px] tracking-[0.32em] uppercase mb-1.5" style={{ color: 'var(--accent)' }}>Manual Tag</p>
           <h1 className="text-3xl serif-display" style={{ color: 'var(--text-primary)' }}>
             Tag Your Item
@@ -508,6 +513,9 @@ export default function AddItem() {
   if (phase === 'previewing') {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-20" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <div className="absolute top-0 left-0 right-0">
+          <PhaseIndicator phase={phase} />
+        </div>
         <motion.img
           initial={{ opacity: 0, scale: 0.94 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -539,7 +547,8 @@ export default function AddItem() {
   // ── Idle ──────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen pb-20" style={{ backgroundColor: 'var(--bg-primary)' }}>
-      <div className="px-5 pt-10 pb-6">
+      <PhaseIndicator phase={phase} />
+      <div className="px-5 pt-4 pb-6">
         <p className="text-[10px] tracking-[0.32em] uppercase mb-2" style={{ color: 'var(--accent)' }}>Add to Wardrobe</p>
         <h1 className="text-3xl serif-display" style={{ color: 'var(--text-primary)' }}>New Item</h1>
       </div>
