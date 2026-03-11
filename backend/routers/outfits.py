@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -24,8 +25,9 @@ class SaveOutfitRequest(BaseModel):
     rating: int | None = None
 
 
-class RatingUpdate(BaseModel):
-    rating: int
+class OutfitUpdate(BaseModel):
+    rating: int | None = None
+    name: str | None = None
 
 
 @router.post("/outfits/generate")
@@ -47,7 +49,17 @@ async def generate_outfit_suggestions(
         )
 
     items_as_dicts = [i.model_dump() for i in items]
-    suggestions = await generate_outfits(items_as_dicts, req.occasion, req.season)
+
+    # Iteration 6: pass top-rated/worn outfits as preference context
+    top_outfits_query = (
+        select(SavedOutfit)
+        .where(SavedOutfit.rating >= 4)
+        .order_by(SavedOutfit.rating.desc(), SavedOutfit.times_worn.desc())
+        .limit(5)
+    )
+    top_outfits = [o.model_dump() for o in session.exec(top_outfits_query).all()]
+
+    suggestions = await generate_outfits(items_as_dicts, req.occasion, req.season, past_outfits=top_outfits)
 
     if not suggestions:
         raise HTTPException(
@@ -133,18 +145,87 @@ def save_outfit(req: SaveOutfitRequest, session: Session = Depends(get_session))
 
 @router.put("/outfits/{outfit_id}")
 def update_outfit(
-    outfit_id: int, data: RatingUpdate, session: Session = Depends(get_session)
+    outfit_id: int, data: OutfitUpdate, session: Session = Depends(get_session)
 ):
     outfit = session.get(SavedOutfit, outfit_id)
     if not outfit:
         raise HTTPException(status_code=404, detail="Outfit not found")
-    if not (1 <= data.rating <= 5):
-        raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
-    outfit.rating = data.rating
+    if data.rating is not None:
+        if not (1 <= data.rating <= 5):
+            raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
+        outfit.rating = data.rating
+    if data.name is not None:
+        outfit.name = data.name or None
     session.add(outfit)
     session.commit()
     session.refresh(outfit)
     return outfit
+
+
+@router.post("/outfits/{outfit_id}/worn")
+def mark_outfit_worn(outfit_id: int, session: Session = Depends(get_session)):
+    """
+    Iteration 6: Increment times_worn on an outfit and set worn_date to now.
+    Also increments times_worn on each item in the outfit.
+    """
+    outfit = session.get(SavedOutfit, outfit_id)
+    if not outfit:
+        raise HTTPException(status_code=404, detail="Outfit not found")
+
+    outfit.times_worn = (outfit.times_worn or 0) + 1
+    outfit.worn_date = datetime.now(timezone.utc).isoformat()
+
+    # Batch-increment times_worn on each item in the outfit
+    try:
+        item_ids = json.loads(outfit.item_ids or "[]")
+    except json.JSONDecodeError:
+        item_ids = []
+
+    for iid in item_ids:
+        item = session.get(ClothingItem, iid)
+        if item:
+            item.times_worn = (item.times_worn or 0) + 1
+            session.add(item)
+
+    session.add(outfit)
+    session.commit()
+    session.refresh(outfit)
+    return {"id": outfit.id, "times_worn": outfit.times_worn, "worn_date": outfit.worn_date}
+
+
+@router.get("/outfits/history")
+def outfit_history(session: Session = Depends(get_session)):
+    """
+    Iteration 6: Return outfits that have been marked as worn, sorted by worn_date DESC.
+    """
+    query = (
+        select(SavedOutfit)
+        .where(SavedOutfit.times_worn > 0)
+        .order_by(SavedOutfit.worn_date.desc())
+    )
+    outfits = session.exec(query).all()
+
+    def _parse_ids(raw: str) -> list[int]:
+        try:
+            return json.loads(raw or "[]")
+        except json.JSONDecodeError:
+            return []
+
+    all_ids = [iid for o in outfits for iid in _parse_ids(o.item_ids)]
+    if all_ids:
+        item_map = {
+            i.id: i
+            for i in session.exec(select(ClothingItem).where(ClothingItem.id.in_(all_ids))).all()
+        }
+    else:
+        item_map = {}
+
+    result = []
+    for outfit in outfits:
+        item_ids = _parse_ids(outfit.item_ids)
+        items = [item_map[iid].model_dump() for iid in item_ids if iid in item_map]
+        result.append({**outfit.model_dump(), "items": items})
+    return result
 
 
 @router.delete("/outfits/{outfit_id}")

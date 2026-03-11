@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { Camera, Upload, CheckCircle2, RotateCcw, Barcode } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Camera, Upload, CheckCircle2, RotateCcw, Barcode, Tag } from 'lucide-react'
 import axios from 'axios'
 import BarcodeScanner from '../components/BarcodeScanner'
 import SplineScene from '../components/SplineScene'
@@ -37,10 +37,17 @@ export default function AddItem() {
   const [photoFile, setPhotoFile]     = useState(null)
   const [savedItem, setSavedItem]     = useState(null)
   const [error, setError]             = useState('')
+  // Iteration 2: label scan mode — camera captures label photo instead of clothing
+  const [labelScanMode, setLabelScanMode] = useState(false)
+  const [labelScanResult, setLabelScanResult] = useState(null)
+  const [labelScanLoading, setLabelScanLoading] = useState(false)
 
   const [manualForm, setManualForm] = useState({
     category: '', fit_type: '', brand: '', size_label: '',
     colors: '', notes: '', occasions: [], seasons: [],
+    // Iteration 1: garment specs
+    material: '',
+    garment_measurements: { chest_width_cm: '', body_length_cm: '', sleeve_cm: '', waist_cm: '' },
   })
   const [savingManual, setSavingManual] = useState(false)
 
@@ -132,6 +139,34 @@ export default function AddItem() {
     setPhase('idle')
   }
 
+  // ── Label scan (Iteration 2) ─────────────────────────────────────────────
+  async function handleLabelPhotoCapture(file) {
+    setLabelScanLoading(true)
+    setError('')
+    try {
+      const formData = new FormData()
+      formData.append('photo', file)
+      const { data } = await axios.post(`${API_URL}/items/scan-label`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      setLabelScanResult(data)
+      // Pre-fill the manual form with whatever the label had
+      if (data && Object.keys(data).length > 0) {
+        setManualForm((prev) => ({
+          ...prev,
+          brand:      data.brand    ?? prev.brand,
+          size_label: data.size     ?? prev.size_label,
+          material:   data.material ?? prev.material,
+          notes:      data.other_text ? `Label: ${data.other_text}` : prev.notes,
+        }))
+      }
+    } catch {
+      setLabelScanResult({})
+    } finally {
+      setLabelScanLoading(false)
+    }
+  }
+
   // ── Upload ───────────────────────────────────────────────────────────────
   async function uploadPhoto() {
     if (!photoFile) return
@@ -188,15 +223,23 @@ export default function AddItem() {
     if (!savedItem) return
     setSavingManual(true)
     try {
+      // Build garment_measurements: only include fields that have a numeric value
+      const gm = {}
+      for (const [k, v] of Object.entries(manualForm.garment_measurements)) {
+        const n = parseFloat(v)
+        if (!isNaN(n) && n > 0) gm[k] = n
+      }
       const payload = {
         category:   manualForm.category   || 'other',
         fit_type:   manualForm.fit_type   || null,
         brand:      manualForm.brand      || null,
         size_label: manualForm.size_label || null,
         notes:      manualForm.notes      || null,
+        material:   manualForm.material   || null,
         colors:     manualForm.colors ? manualForm.colors.split(',').map((s) => s.trim()).filter(Boolean) : [],
         occasions:  manualForm.occasions,
         seasons:    manualForm.seasons,
+        ...(Object.keys(gm).length > 0 && { garment_measurements: gm }),
       }
       await axios.put(`${API_URL}/items/${savedItem.id}`, payload)
       setPhase('done')
@@ -381,6 +424,44 @@ export default function AddItem() {
           </div>
 
           <div>
+            <label className="block text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Material / Fabric</label>
+            <input type="text" value={manualForm.material}
+              onChange={(e) => setManualForm((p) => ({ ...p, material: e.target.value }))}
+              placeholder="100% cotton, polyester blend…"
+              className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none" style={INPUT_STYLE} />
+          </div>
+
+          {/* Garment Measurements — plain Tailwind, no animation needed (static form fields) */}
+          <div>
+            <label className="block text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>
+              Garment Measurements <span style={{ color: 'rgba(107,101,96,0.5)' }}>(cm, measured flat)</span>
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { key: 'chest_width_cm', label: 'Chest Width' },
+                { key: 'body_length_cm', label: 'Body Length' },
+                { key: 'sleeve_cm',      label: 'Sleeve' },
+                { key: 'waist_cm',       label: 'Waist / Hip' },
+              ].map(({ key, label }) => (
+                <div key={key}>
+                  <label className="block text-[10px] uppercase tracking-wider mb-1.5" style={{ color: 'rgba(107,101,96,0.7)' }}>{label}</label>
+                  <input
+                    type="number" min="0" step="0.5"
+                    value={manualForm.garment_measurements[key]}
+                    onChange={(e) => setManualForm((p) => ({
+                      ...p,
+                      garment_measurements: { ...p.garment_measurements, [key]: e.target.value }
+                    }))}
+                    placeholder="cm"
+                    className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none"
+                    style={INPUT_STYLE}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
             <label className="block text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Notes</label>
             <textarea value={manualForm.notes}
               onChange={(e) => setManualForm((p) => ({ ...p, notes: e.target.value }))}
@@ -515,7 +596,60 @@ export default function AddItem() {
           Scan Barcode
         </motion.button>
 
-        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+        {/* Iteration 2: Scan clothing label/tag — camera captures label, Ollama OCR extracts brand/size/material */}
+        <motion.button
+          onClick={() => { setLabelScanMode(true); fileInputRef.current?.click() }}
+          whileTap={{ scale: 0.97 }}
+          disabled={labelScanLoading}
+          className="w-full py-4 rounded-2xl flex items-center justify-center gap-3 text-sm font-medium disabled:opacity-50"
+          style={{ border: '1px solid rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}
+        >
+          <Tag size={18} strokeWidth={1.75} />
+          {labelScanLoading ? 'Reading label…' : 'Scan Label / Care Tag'}
+        </motion.button>
+
+        {/* Label scan result — Framer Motion AnimatePresence (single element appearing on success) */}
+        <AnimatePresence>
+          {labelScanResult !== null && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.25 }}
+              className="w-full rounded-2xl px-4 py-3"
+              style={Object.keys(labelScanResult).length > 0
+                ? { backgroundColor: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.18)' }
+                : { backgroundColor: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.15)' }
+              }
+            >
+              {Object.keys(labelScanResult).length > 0 ? (
+                <>
+                  <p className="text-xs font-semibold mb-1" style={{ color: '#4ADE80' }}>Label Read</p>
+                  {labelScanResult.brand    && <p className="text-sm" style={{ color: 'var(--text-primary)' }}>{labelScanResult.brand}</p>}
+                  {labelScanResult.size     && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Size: {labelScanResult.size}</p>}
+                  {labelScanResult.material && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{labelScanResult.material}</p>}
+                  <p className="text-xs mt-1" style={{ color: 'rgba(74,222,128,0.6)' }}>Pre-filled in form below</p>
+                </>
+              ) : (
+                <p className="text-xs" style={{ color: '#F87171' }}>Couldn't read label clearly. Fill in manually.</p>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (!file) return
+            if (labelScanMode) {
+              setLabelScanMode(false)
+              handleLabelPhotoCapture(file)
+              e.target.value = ''  // Reset so same file can be selected again
+            } else {
+              handleFileSelect(e)
+            }
+          }}
+        />
 
         <p className="text-xs text-center mt-2" style={{ color: 'var(--text-muted)', opacity: 0.55 }}>
           AI will automatically tag your item.<br />

@@ -14,10 +14,11 @@ TAGGING_PROMPT = """You are a fashion assistant. Analyze this clothing item phot
 {
   "category": "one of: tshirt, shirt, polo, jacket, hoodie, sweater, jeans, chinos, trousers, shorts, shoes, sneakers, boots, formal_shoes, accessory, other",
   "colors": ["primary color", "secondary color if present"],
-  "tags": ["fit-type", "material-if-visible", "pattern-if-any"],
+  "tags": ["pattern-if-any", "notable-detail-if-any"],
   "fit_type": "one of: slim, regular, oversized, relaxed",
   "occasions": ["one or more of: casual, work, formal, sport, outdoor"],
-  "seasons": ["one or more of: spring, summer, fall, winter"]
+  "seasons": ["one or more of: spring, summer, fall, winter"],
+  "material": "fabric composition if visible on label or clearly inferrable (e.g. 100% cotton, polyester blend). Use null if completely unknown."
 }"""
 
 
@@ -68,6 +69,64 @@ async def tag_clothing_image(image_path: str) -> dict:
         return {}
 
 
+_GARMENT_MEASUREMENT_PROMPT = """You are a garment sizing expert. Look at this clothing item photo.
+Estimate typical garment measurements for this specific item based on what's visible (size tag, proportions, style).
+Return ONLY valid JSON with numeric values in centimeters. Use null for any measurement you cannot reasonably estimate.
+
+For tops (tshirt, shirt, polo, jacket, hoodie, sweater): estimate chest_width_cm (measured flat, half circumference), body_length_cm, sleeve_cm
+For bottoms (jeans, chinos, trousers, shorts): estimate waist_cm (garment waist, flat x2), inseam_cm, rise_cm
+For shoes/boots: estimate us_size (numeric), uk_size (numeric)
+For other items: estimate the most relevant 2-3 dimensions.
+
+Return format:
+{
+  "chest_width_cm": null_or_number,
+  "body_length_cm": null_or_number,
+  "sleeve_cm": null_or_number,
+  "waist_cm": null_or_number,
+  "inseam_cm": null_or_number
+}
+Only include fields relevant to the category. Omit fields that are clearly not applicable."""
+
+
+async def infer_garment_measurements(image_path: str, category: str) -> dict:
+    """
+    Call Ollama vision to estimate garment dimensions from a photo.
+    Returns dict with non-null measurement fields, or {} on failure/uncertainty.
+    Never blocks upload — always called after item is already saved.
+    """
+    try:
+        with open(image_path, "rb") as f:
+            image_data = base64.b64encode(f.read()).decode()
+
+        prompt = f"Category: {category}\n\n{_GARMENT_MEASUREMENT_PROMPT}"
+        payload = {
+            "model": MODEL,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt,
+                    "images": [image_data],
+                }
+            ],
+            "stream": False,
+            "options": {"temperature": 0.2},
+        }
+
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(OLLAMA_URL, json=payload)
+
+        raw = resp.json()["message"]["content"]
+        result = parse_ai_json(raw)
+        if not isinstance(result, dict):
+            return {}
+        # Keep only numeric (non-null) measurements
+        return {k: v for k, v in result.items() if isinstance(v, (int, float))}
+
+    except Exception:
+        return {}
+
+
 _OUTFIT_FIELDS = {"id", "category", "colors", "occasions", "seasons", "fit_type"}
 _GAPS_FIELDS   = {"id", "category", "occasions", "seasons", "colors"}
 
@@ -77,17 +136,28 @@ def _slim_items(items: list[dict], keep: set = _OUTFIT_FIELDS) -> list[dict]:
     return [{k: v for k, v in item.items() if k in keep} for item in items]
 
 
-async def generate_outfits(items: list[dict], occasion: str, season: str) -> list[dict]:
+async def generate_outfits(
+    items: list[dict],
+    occasion: str,
+    season: str,
+    past_outfits: list[dict] | None = None,
+) -> list[dict]:
     """
     Call Ollama to generate 3 outfit suggestions.
     Returns a list of {"items": [...], "reason": "..."} dicts.
     Returns [] on any failure (Ollama down, malformed JSON, etc).
+    Iteration 6: accepts past_outfits as preference context.
     """
-    prompt = f"""You are a personal stylist. Suggest exactly 3 outfits for occasion: {occasion}, season: {season}.
+    past_context = ""
+    if past_outfits:
+        slim_past = [{"item_ids": o.get("item_ids"), "rating": o.get("rating"), "name": o.get("name")} for o in past_outfits]
+        past_context = f"\nUser's highly-rated past outfits (style reference — do not duplicate): {json.dumps(slim_past)}\n"
 
+    prompt = f"""You are a personal stylist. Suggest exactly 3 outfits for occasion: {occasion}, season: {season}.
+{past_context}
 Wardrobe: {json.dumps(_slim_items(items))}
 
-Rules: each outfit 2-4 items, color-coordinate, match occasion and season.
+Rules: each outfit 2-4 items, color-coordinate, match occasion and season. Avoid duplicating past outfits exactly.
 Return ONLY JSON array:
 [
   {{"items": [1, 3], "reason": "brief note"}},

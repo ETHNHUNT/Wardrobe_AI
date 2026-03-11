@@ -1,12 +1,41 @@
 import { useEffect, useRef, useState } from 'react'
 import axios from 'axios'
 import { gsap } from 'gsap'
-import { Shirt } from 'lucide-react'
+import { Shirt, Grid3X3, Palette } from 'lucide-react'
 import ItemCard from '../components/ItemCard'
 import ItemDetailModal from '../components/ItemDetailModal'
 import SplineScene from '../components/SplineScene'
 import TextShimmer from '../components/TextShimmer'
 import { SCENES } from '../lib/scenes'
+
+// Color name → approximate CSS display color (for swatch rendering only)
+const COLOR_CSS = {
+  black: '#1a1a1a', white: '#f0ede8', grey: '#9e9e9e', gray: '#9e9e9e',
+  beige: '#f5f0e8', cream: '#fff8e7', 'off-white': '#f5f0e8', charcoal: '#444',
+  navy: '#1a2744', blue: '#2563eb', 'royal blue': '#4169e1', cobalt: '#0047ab',
+  teal: '#008080', slate: '#708090', indigo: '#4b0082', denim: '#1560bd',
+  'light blue': '#87ceeb', 'sky blue': '#87ceeb',
+  red: '#dc2626', burgundy: '#800020', maroon: '#800000', orange: '#f97316',
+  rust: '#b45309', terracotta: '#c2673c', brick: '#9c3b3b', pink: '#ec4899',
+  brown: '#7c3f00', camel: '#c19a6b', khaki: '#c3b091', olive: '#6b6b35',
+  tan: '#d2b48c', stone: '#918474', sand: '#c2b280', taupe: '#8b7d7b',
+  yellow: '#fde047', lime: '#84cc16', purple: '#9333ea', violet: '#8b5cf6',
+  coral: '#f87171', mint: '#6ee7b7', cyan: '#22d3ee', green: '#16a34a',
+  white: '#f0ede8',
+}
+function getColorCSS(name) {
+  return COLOR_CSS[name?.toLowerCase()] ?? name
+}
+
+const GROUP_ORDER = ['neutrals', 'cool', 'warm', 'earth', 'bright']
+const GROUP_LABEL = { neutrals: 'Neutrals', cool: 'Cool', warm: 'Warm', earth: 'Earth', bright: 'Bright' }
+const GROUP_COLOR = {
+  neutrals: 'rgba(200,169,126,0.7)',
+  cool:     '#4A9EDE',
+  warm:     '#E07B5A',
+  earth:    '#9A7A52',
+  bright:   '#A78BFA',
+}
 
 const API_URL = import.meta.env.VITE_API_URL
 
@@ -86,13 +115,33 @@ export default function Wardrobe() {
   const [loading, setLoading]       = useState(true)
   const [filters, setFilters]       = useState({ category: '', occasion: '', season: '' })
   const [selectedItem, setSelectedItem] = useState(null)
-  const gridRef = useRef(null)
+  const [view, setView]             = useState('grid')  // 'grid' | 'palette'
+  const [paletteData, setPaletteData] = useState(null)
+  const [paletteLoading, setPaletteLoading] = useState(false)
+  const gridRef    = useRef(null)
+  const swatchRef  = useRef(null)
 
   useEffect(() => {
     const controller = new AbortController()
     fetchItems(controller.signal)
     return () => controller.abort()
   }, [filters]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (view === 'palette' && !paletteData) fetchPalette()
+  }, [view]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function fetchPalette() {
+    setPaletteLoading(true)
+    try {
+      const { data } = await axios.get(`${API_URL}/shop/palette`)
+      setPaletteData(data)
+    } catch (err) {
+      console.error('Failed to fetch palette:', err)
+    } finally {
+      setPaletteLoading(false)
+    }
+  }
 
   async function fetchItems(signal) {
     setLoading(true)
@@ -110,7 +159,7 @@ export default function Wardrobe() {
     }
   }
 
-  // GSAP stagger entrance
+  // GSAP stagger entrance — wardrobe grid
   useEffect(() => {
     if (!loading && items.length && gridRef.current) {
       const cards = gridRef.current.querySelectorAll('.item-card')
@@ -123,6 +172,20 @@ export default function Wardrobe() {
       }
     }
   }, [loading, items])
+
+  // GSAP stagger entrance — palette swatches
+  useEffect(() => {
+    if (!paletteLoading && paletteData && swatchRef.current) {
+      const swatches = swatchRef.current.querySelectorAll('.palette-swatch')
+      if (swatches.length) {
+        gsap.fromTo(
+          swatches,
+          { scale: 0.7, opacity: 0 },
+          { scale: 1, opacity: 1, duration: 0.35, stagger: 0.04, ease: 'back.out(1.4)', clearProps: 'all' }
+        )
+      }
+    }
+  }, [paletteLoading, paletteData])
 
   function handleFilter(key, value) {
     setFilters((prev) => ({ ...prev, [key]: value }))
@@ -205,8 +268,33 @@ export default function Wardrobe() {
         </div>
       </div>
 
-      {/* Thin divider */}
-      <div className="mx-5 mb-4" style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.05)' }} />
+      {/* ── View Toggle + divider ── */}
+      <div className="mx-5 mb-4 flex items-center justify-between">
+        <div style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.05)', flex: 1 }} />
+        <div className="flex mx-3 rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.07)' }}>
+          <button
+            onClick={() => setView('grid')}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs transition-all"
+            style={view === 'grid'
+              ? { backgroundColor: 'var(--accent)', color: '#0C0C0C', fontWeight: 600 }
+              : { backgroundColor: 'transparent', color: 'var(--text-muted)' }}
+          >
+            <Grid3X3 size={12} strokeWidth={2} />
+            Grid
+          </button>
+          <button
+            onClick={() => setView('palette')}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs transition-all"
+            style={view === 'palette'
+              ? { backgroundColor: 'var(--accent)', color: '#0C0C0C', fontWeight: 600 }
+              : { backgroundColor: 'transparent', color: 'var(--text-muted)' }}
+          >
+            <Palette size={12} strokeWidth={2} />
+            Palette
+          </button>
+        </div>
+        <div style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.05)', flex: 1 }} />
+      </div>
 
       {/* ── Item Detail Modal ── */}
       {selectedItem && (
@@ -224,50 +312,172 @@ export default function Wardrobe() {
         />
       )}
 
-      {/* ── Grid ── */}
-      <div className="px-4">
-        {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
-          </div>
-        ) : items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-28 text-center">
-            <Shirt
-              size={52}
-              strokeWidth={1}
-              style={{ color: 'rgba(107,101,96,0.3)', marginBottom: 20 }}
-            />
-            <h2
-              className="text-lg font-light mb-2"
-              style={{
-                fontFamily: 'var(--font-serif)',
-                fontStyle: 'italic',
-                color: 'rgba(240,237,232,0.7)',
-                letterSpacing: '0.02em',
-              }}
-            >
-              Your wardrobe is empty
-            </h2>
-            <p className="text-sm" style={{ color: 'rgba(107,101,96,0.6)' }}>
-              Tap + to add your first item
+      {/* ── Grid View ── */}
+      {view === 'grid' && (
+        <div className="px-4">
+          {loading ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
+            </div>
+          ) : items.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-28 text-center">
+              <Shirt
+                size={52}
+                strokeWidth={1}
+                style={{ color: 'rgba(107,101,96,0.3)', marginBottom: 20 }}
+              />
+              <h2
+                className="text-lg font-light mb-2"
+                style={{
+                  fontFamily: 'var(--font-serif)',
+                  fontStyle: 'italic',
+                  color: 'rgba(240,237,232,0.7)',
+                  letterSpacing: '0.02em',
+                }}
+              >
+                Your wardrobe is empty
+              </h2>
+              <p className="text-sm" style={{ color: 'rgba(107,101,96,0.6)' }}>
+                Tap + to add your first item
+              </p>
+            </div>
+          ) : (
+            <div ref={gridRef} className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {items.map((item) => (
+                <div key={item.id} className="item-card">
+                  <ItemCard
+                    item={item}
+                    onClick={(i) => setSelectedItem(i)}
+                    onWorn={(id, count) =>
+                      setItems((prev) => prev.map((i) => i.id === id ? { ...i, times_worn: count } : i))
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Palette View ── */}
+      {view === 'palette' && (
+        <div className="px-5 pb-8">
+          {paletteLoading && (
+            <div className="flex items-center gap-2 py-8">
+              <span className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin"
+                style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
+              <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Analyzing palette…</span>
+            </div>
+          )}
+
+          {!paletteLoading && !paletteData && (
+            <p className="text-sm py-8" style={{ color: 'var(--text-muted)' }}>
+              Add items to see your color palette.
             </p>
-          </div>
-        ) : (
-          <div ref={gridRef} className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {items.map((item) => (
-              <div key={item.id} className="item-card">
-                <ItemCard
-                  item={item}
-                  onClick={(i) => setSelectedItem(i)}
-                  onWorn={(id, count) =>
-                    setItems((prev) => prev.map((i) => i.id === id ? { ...i, times_worn: count } : i))
-                  }
-                />
+          )}
+
+          {!paletteLoading && paletteData && (
+            <div className="space-y-6">
+              {/* ── Color groups ── */}
+              {GROUP_ORDER.map((group) => {
+                const count = paletteData.by_group?.[group] ?? 0
+                if (count === 0) return null
+                const total = Object.values(paletteData.by_group ?? {}).reduce((a, b) => a + b, 0)
+                const pct   = total > 0 ? Math.round((count / total) * 100) : 0
+                return (
+                  <div key={group}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs uppercase tracking-[0.15em]" style={{ color: GROUP_COLOR[group] }}>
+                        {GROUP_LABEL[group]}
+                      </span>
+                      <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
+                        {count} item{count !== 1 ? 's' : ''} · {pct}%
+                      </span>
+                    </div>
+                    {/* Tailwind CSS bar fill — simple width transition */}
+                    <div className="h-1.5 rounded-full mb-3 overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{ width: `${pct}%`, backgroundColor: GROUP_COLOR[group] }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+
+              {/* ── All colors swatches — GSAP stagger ── */}
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] mb-3" style={{ color: 'var(--accent)' }}>
+                  Your Colors
+                </p>
+                <div ref={swatchRef} className="flex flex-wrap gap-2">
+                  {(paletteData.all_colors ?? []).map((color) => (
+                    <div key={color} className="palette-swatch flex flex-col items-center gap-1">
+                      <div
+                        className="w-9 h-9 rounded-full"
+                        style={{
+                          backgroundColor: getColorCSS(color),
+                          border: '2px solid rgba(255,255,255,0.1)',
+                          boxShadow: `0 2px 8px ${getColorCSS(color)}55`,
+                        }}
+                      />
+                      <span className="text-[9px] capitalize text-center max-w-[44px] leading-tight"
+                        style={{ color: 'var(--text-muted)' }}>
+                        {color}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+
+              {/* ── Divider ── */}
+              <div style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)' }} />
+
+              {/* ── Complementary suggestions ── */}
+              {(paletteData.complementary_suggestions?.length ?? 0) > 0 && (
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] mb-1" style={{ color: 'var(--accent)' }}>
+                    What to Add
+                  </p>
+                  <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
+                    Colors that would complement your wardrobe
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    {paletteData.complementary_suggestions.map((color) => (
+                      <div key={color} className="flex flex-col items-center gap-1.5">
+                        <div
+                          className="w-10 h-10 rounded-full flex items-center justify-center"
+                          style={{
+                            backgroundColor: getColorCSS(color),
+                            border: '2px dashed rgba(200,169,126,0.4)',
+                            boxShadow: `0 4px 12px ${getColorCSS(color)}44`,
+                          }}
+                        >
+                          <span className="text-[8px] font-bold text-white/60">+</span>
+                        </div>
+                        <span className="text-[10px] capitalize" style={{ color: 'var(--text-primary)' }}>{color}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Underrepresented note ── */}
+              {(paletteData.underrepresented?.length ?? 0) > 0 && (
+                <div className="rounded-2xl p-4"
+                  style={{ backgroundColor: 'rgba(200,169,126,0.05)', border: '1px solid rgba(200,169,126,0.12)' }}>
+                  <p className="text-xs font-medium mb-1" style={{ color: 'var(--accent)' }}>
+                    Underrepresented groups
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    Your wardrobe has little of: {paletteData.underrepresented.map((g) => GROUP_LABEL[g] ?? g).join(', ')}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
