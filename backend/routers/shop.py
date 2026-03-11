@@ -8,6 +8,7 @@ from models.item import ClothingItem
 from models.user import UserProfile
 from services.ai_service import analyze_gaps
 from services.shopping_service import compute_local_coverage, build_suggestions
+from services.color_service import get_palette_summary, suggest_complementary_colors
 
 router = APIRouter()
 
@@ -65,10 +66,31 @@ async def get_suggestions(
 
     ai_result = await _get_gaps_cached(items)  # reuses cached result from /shop/gaps if fresh
     gaps = ai_result.get("gaps", [])
-    suggestions = build_suggestions(gaps, profile.model_dump(), brand, budget_cad)
+    suggestions = build_suggestions(gaps, profile.model_dump(), brand, budget_cad, wardrobe_items=items)
 
     return {
         "suggestions": suggestions,
         "brand": brand,
         "budget_cad": budget_cad,
     }
+
+
+@router.get("/shop/palette")
+def get_palette(session: Session = Depends(get_session)):
+    """
+    Iteration 3: Return color palette analysis of the wardrobe.
+    Instant — no Ollama call, pure Python color grouping.
+
+    Response:
+    {
+        "by_group": {"neutrals": 12, "cool": 8, ...},
+        "dominant_group": "neutrals",
+        "underrepresented": ["warm", "bright"],
+        "complementary_suggestions": ["burgundy", "rust", "camel"],
+        "all_colors": ["navy", "white", "grey", ...]
+    }
+    """
+    items = [i.model_dump() for i in session.exec(select(ClothingItem)).all()]
+    summary = get_palette_summary(items)
+    complementary = suggest_complementary_colors(summary)
+    return {**summary, "complementary_suggestions": complementary}

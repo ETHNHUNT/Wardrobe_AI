@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Trash2, Tag, Pencil, CheckCircle2 } from 'lucide-react'
+import { X, Trash2, Tag, Pencil, CheckCircle2, Ruler } from 'lucide-react'
 import axios from 'axios'
 import LuxSelect from './LuxSelect'
 import { parseJson } from '../lib/utils'
@@ -43,6 +43,8 @@ export default function ItemDetailModal({ item, onClose, onDeleted, onUpdated })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [fitResult, setFitResult] = useState(null)
+  const [fitLoading, setFitLoading] = useState(false)
 
   const [form, setForm] = useState({
     category:   item.category ?? '',
@@ -53,21 +55,31 @@ export default function ItemDetailModal({ item, onClose, onDeleted, onUpdated })
     occasions:  parseJson(item.occasions),
     seasons:    parseJson(item.seasons),
     notes:      item.notes ?? '',
+    // Iteration 1
+    material:   item.material ?? '',
+    garment_measurements: parseJson(item.garment_measurements ?? '{}', {}),
   })
 
   async function handleSave() {
     setSaving(true)
     setError('')
     try {
+      const gm = {}
+      for (const [k, v] of Object.entries(form.garment_measurements)) {
+        const n = parseFloat(v)
+        if (!isNaN(n) && n > 0) gm[k] = n
+      }
       const payload = {
         category:   form.category || 'other',
         fit_type:   form.fit_type || null,
         brand:      form.brand || null,
         size_label: form.size_label || null,
         notes:      form.notes || null,
+        material:   form.material || null,
         colors:     form.colors ? form.colors.split(',').map((s) => s.trim()).filter(Boolean) : [],
         occasions:  form.occasions,
         seasons:    form.seasons,
+        ...(Object.keys(gm).length > 0 && { garment_measurements: gm }),
       }
       const { data } = await axios.put(`${API_URL}/items/${item.id}`, payload)
       onUpdated && onUpdated(data)
@@ -95,11 +107,26 @@ export default function ItemDetailModal({ item, onClose, onDeleted, onUpdated })
         occasions:  parseJson(data.occasions),
         seasons:    parseJson(data.seasons),
         notes:      data.notes ?? '',
+        material:   data.material ?? '',
+        garment_measurements: parseJson(data.garment_measurements ?? '{}', {}),
       })
     } catch {
       setError('Re-tagging failed. Is Ollama running?')
     } finally {
       setRetagging(false)
+    }
+  }
+
+  async function handleFitCheck() {
+    setFitLoading(true)
+    setFitResult(null)
+    try {
+      const { data } = await axios.get(`${API_URL}/items/${item.id}/fit-check`)
+      setFitResult(data)
+    } catch {
+      setFitResult({ overall_verdict: 'error', overall_label: 'Check failed', color: 'danger', notes: 'Make sure backend is running.' })
+    } finally {
+      setFitLoading(false)
     }
   }
 
@@ -210,6 +237,13 @@ export default function ItemDetailModal({ item, onClose, onDeleted, onUpdated })
               Size {item.size_label}
             </span>
           )}
+          {/* Iteration 1: material chip — plain Tailwind pill, static display */}
+          {item.material && (
+            <span className="text-[10px] px-2.5 py-1 rounded-full"
+              style={{ backgroundColor: 'rgba(200,169,126,0.06)', color: 'var(--accent)', border: '1px solid rgba(200,169,126,0.18)' }}>
+              {item.material}
+            </span>
+          )}
           {parseJson(item.occasions).map((o) => (
             <span key={o} className="text-[10px] px-2.5 py-1 rounded-full capitalize"
               style={{ backgroundColor: 'var(--accent-soft)', color: 'var(--accent)', border: '1px solid rgba(200,169,126,0.2)' }}>
@@ -222,6 +256,62 @@ export default function ItemDetailModal({ item, onClose, onDeleted, onUpdated })
               {s}
             </span>
           ))}
+        </div>
+
+        {/* Iteration 1: Garment measurements table — plain Tailwind grid, no animation (static display) */}
+        {(() => {
+          const gm = parseJson(item.garment_measurements ?? '{}', {})
+          const entries = Object.entries(gm).filter(([, v]) => v != null && v !== '')
+          if (entries.length === 0) return null
+          const LABELS = { chest_width_cm: 'Chest', body_length_cm: 'Length', sleeve_cm: 'Sleeve', waist_cm: 'Waist', inseam_cm: 'Inseam' }
+          return (
+            <div className="mx-5 mb-4 rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="px-3 py-2 flex items-center gap-1.5" style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <span className="text-[10px] tracking-[0.25em] uppercase" style={{ color: 'var(--text-muted)' }}>Garment Measurements</span>
+              </div>
+              <div className="grid grid-cols-3 gap-0" style={{ backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                {entries.map(([key, val]) => (
+                  <div key={key} className="px-3 py-2.5 flex flex-col gap-0.5" style={{ borderRight: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <span className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{LABELS[key] ?? key}</span>
+                    <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{val}<span className="text-[10px] ml-0.5" style={{ color: 'var(--text-muted)' }}>cm</span></span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
+
+        {/* Iteration 5: Fit check result — Framer Motion AnimatePresence (single element, state-driven) */}
+        <div className="px-5 pb-3">
+          <AnimatePresence>
+            {fitResult && (
+              <motion.div
+                key="fit-result"
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.25 }}
+                className="rounded-xl p-3 mb-2"
+                style={{
+                  backgroundColor: fitResult.color === 'success'
+                    ? 'rgba(74,222,128,0.08)' : fitResult.color === 'danger'
+                    ? 'rgba(248,113,113,0.08)' : 'rgba(251,184,70,0.08)',
+                  border: `1px solid ${fitResult.color === 'success'
+                    ? 'rgba(74,222,128,0.2)' : fitResult.color === 'danger'
+                    ? 'rgba(248,113,113,0.2)' : 'rgba(251,184,70,0.2)'}`,
+                }}
+              >
+                <p className="text-sm font-semibold mb-1" style={{
+                  color: fitResult.color === 'success' ? '#4ADE80' : fitResult.color === 'danger' ? '#F87171' : '#FBB846'
+                }}>
+                  {fitResult.overall_label}
+                </p>
+                {fitResult.notes && (
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{fitResult.notes}</p>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {item.notes && (
@@ -306,6 +396,39 @@ export default function ItemDetailModal({ item, onClose, onDeleted, onUpdated })
                 </div>
               </div>
               <div>
+                <label className="block text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Material / Fabric</label>
+                <input type="text" value={form.material} onChange={(e) => setForm((p) => ({ ...p, material: e.target.value }))}
+                  placeholder="100% cotton, polyester blend…" className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none" style={INPUT_STYLE} />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>
+                  Garment Measurements <span style={{ color: 'rgba(107,101,96,0.5)', textTransform: 'none', letterSpacing: 0 }}>(cm, flat)</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { key: 'chest_width_cm', label: 'Chest Width' },
+                    { key: 'body_length_cm', label: 'Body Length' },
+                    { key: 'sleeve_cm',      label: 'Sleeve' },
+                    { key: 'waist_cm',       label: 'Waist/Hip' },
+                  ].map(({ key, label }) => (
+                    <div key={key}>
+                      <label className="block text-[10px] uppercase tracking-wider mb-1" style={{ color: 'rgba(107,101,96,0.6)' }}>{label}</label>
+                      <input
+                        type="number" min="0" step="0.5"
+                        value={form.garment_measurements[key] ?? ''}
+                        onChange={(e) => setForm((p) => ({
+                          ...p,
+                          garment_measurements: { ...p.garment_measurements, [key]: e.target.value }
+                        }))}
+                        placeholder="cm"
+                        className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"
+                        style={INPUT_STYLE}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
                 <label className="block text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Notes</label>
                 <textarea value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
                   rows={2} placeholder="Any notes…" className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none" style={INPUT_STYLE} />
@@ -331,6 +454,29 @@ export default function ItemDetailModal({ item, onClose, onDeleted, onUpdated })
             <Pencil size={14} strokeWidth={1.75} />
             {editing ? 'Cancel Edit' : 'Edit Tags'}
           </motion.button>
+
+          {/* Iteration 5: Check Fit button — appears only when garment_measurements exist */}
+          {(() => {
+            const gm = parseJson(item.garment_measurements ?? '{}', {})
+            if (Object.keys(gm).length === 0) return null
+            return (
+              <motion.button
+                onClick={handleFitCheck}
+                disabled={fitLoading}
+                whileTap={{ scale: 0.97 }}
+                className="w-full py-3.5 rounded-2xl text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                style={{ border: '1px solid rgba(255,255,255,0.07)', color: 'var(--text-muted)' }}
+              >
+                {fitLoading ? (
+                  <><span className="w-3.5 h-3.5 rounded-full border-2 border-t-transparent animate-spin"
+                    style={{ borderColor: 'var(--text-muted)', borderTopColor: 'transparent' }} />
+                  Checking fit…</>
+                ) : (
+                  <><Ruler size={14} strokeWidth={1.75} />Check Fit</>
+                )}
+              </motion.button>
+            )
+          })()}
 
           <motion.button
             onClick={handleRetag}

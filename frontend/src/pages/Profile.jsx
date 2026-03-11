@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Plus, Trash2 } from 'lucide-react'
 import axios from 'axios'
+
+const COMMON_BRANDS = ['Zara', 'H&M', 'Uniqlo', 'Mango', 'Gap', 'Levi\'s', 'Nike', 'Adidas', 'Puma', 'Reebok', 'Gucci', 'Armani', 'Calvin Klein', 'Tommy Hilfiger', 'Ralph Lauren', 'Other']
+const SIZE_OPTIONS  = ['XXS', 'XS', 'S', 'S/M', 'M', 'L', 'L/XL', 'XL', 'XXL', 'XXXL', '28', '30', '32', '34', '36', '38', '40', '42']
 
 const API_URL = import.meta.env.VITE_API_URL
 
@@ -25,6 +29,22 @@ const INPUT_STYLE = {
 const INPUT_FOCUS_STYLE = '1px solid rgba(200,169,126,0.55)'
 const INPUT_FOCUS_SHADOW = '0 0 0 3px rgba(200,169,126,0.06)'
 
+function parseBrandSizes(jsonStr) {
+  try {
+    const obj = JSON.parse(jsonStr || '{}')
+    return Object.entries(obj).map(([brand, size]) => ({ brand, size }))
+  } catch {
+    return []
+  }
+}
+function brandSizesToJson(list) {
+  const obj = {}
+  for (const { brand, size } of list) {
+    if (brand.trim()) obj[brand.trim()] = size
+  }
+  return JSON.stringify(obj)
+}
+
 export default function Profile() {
   const [form, setForm] = useState({
     name: '',
@@ -32,11 +52,14 @@ export default function Profile() {
     hips_cm: '', inseam_cm: '', shoulder_cm: '', arm_length_cm: '', neck_cm: '',
     brand_sizes: '{}',
   })
-  const [loading, setLoading]   = useState(true)
-  const [saving, setSaving]     = useState(false)
-  const [toast, setToast]       = useState('')
-  const [toastOk, setToastOk]   = useState(true)
-  const [focused, setFocused]   = useState(null)
+  const [brandList, setBrandList] = useState([])      // Iteration 5: structured brand sizes
+  const [newBrand, setNewBrand]   = useState('')
+  const [newSize, setNewSize]     = useState('M')
+  const [loading, setLoading]     = useState(true)
+  const [saving, setSaving]       = useState(false)
+  const [toast, setToast]         = useState('')
+  const [toastOk, setToastOk]     = useState(true)
+  const [focused, setFocused]     = useState(null)
   const toastTimerRef = useRef(null)
 
   useEffect(() => () => clearTimeout(toastTimerRef.current), [])
@@ -45,6 +68,7 @@ export default function Profile() {
     async function loadProfile() {
       try {
         const { data } = await axios.get(`${API_URL}/profile`)
+        const rawSizes = data.brand_sizes ?? '{}'
         setForm({
           name:           data.name           ?? '',
           height_cm:      data.height_cm      ?? '',
@@ -56,8 +80,9 @@ export default function Profile() {
           shoulder_cm:    data.shoulder_cm    ?? '',
           arm_length_cm:  data.arm_length_cm  ?? '',
           neck_cm:        data.neck_cm        ?? '',
-          brand_sizes:    data.brand_sizes    ?? '{}',
+          brand_sizes:    rawSizes,
         })
+        setBrandList(parseBrandSizes(rawSizes))
       } catch (err) {
         console.error('Failed to load profile:', err)
       } finally {
@@ -72,11 +97,25 @@ export default function Profile() {
     setForm((prev) => ({ ...prev, [name]: value }))
   }
 
+  function addBrandSize() {
+    if (!newBrand.trim()) return
+    setBrandList((prev) => {
+      const filtered = prev.filter((b) => b.brand.toLowerCase() !== newBrand.trim().toLowerCase())
+      return [...filtered, { brand: newBrand.trim(), size: newSize }]
+    })
+    setNewBrand('')
+    setNewSize('M')
+  }
+
+  function removeBrandSize(brand) {
+    setBrandList((prev) => prev.filter((b) => b.brand !== brand))
+  }
+
   async function handleSave(e) {
     e.preventDefault()
     setSaving(true)
     try {
-      const payload = { ...form }
+      const payload = { ...form, brand_sizes: brandSizesToJson(brandList) }
       for (const field of MEASUREMENT_FIELDS) {
         const rawValue = payload[field.key]
         if (rawValue === '') { delete payload[field.key]; continue }
@@ -165,25 +204,80 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Brand sizes */}
+        {/* Brand sizes — Iteration 5: structured UI replacing raw JSON textarea */}
+        {/* Framer Motion for each row add/remove */}
         <div>
-          <label className="block text-xs uppercase tracking-[0.2em] mb-1.5" style={{ color: 'var(--accent)' }}>
+          <label className="block text-xs uppercase tracking-[0.2em] mb-3" style={{ color: 'var(--accent)' }}>
             Brand Sizes
           </label>
-          <p className="text-[10px] mb-2" style={{ color: 'var(--text-muted)', opacity: 0.7 }}>
-            JSON format: {`{"Zara": "M", "H&M": "L"}`}
-          </p>
-          <textarea
-            name="brand_sizes"
-            value={form.brand_sizes}
-            onChange={handleChange}
-            onFocus={() => setFocused('brand_sizes')}
-            onBlur={() => setFocused(null)}
-            rows={3}
-            className="w-full rounded-xl px-4 py-3 text-sm font-mono focus:outline-none transition-colors duration-150"
-            style={{ ...INPUT_STYLE, ...(focused === 'brand_sizes' ? { border: INPUT_FOCUS_STYLE, boxShadow: INPUT_FOCUS_SHADOW } : {}) }}
-            placeholder='{"Zara": "M", "H&M": "L"}'
-          />
+
+          {/* Existing brand size rows */}
+          <div className="space-y-2 mb-3">
+            <AnimatePresence>
+              {brandList.map(({ brand, size }) => (
+                <motion.div
+                  key={brand}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5"
+                  style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid rgba(255,255,255,0.07)' }}
+                >
+                  <span className="flex-1 text-sm" style={{ color: 'var(--text-primary)' }}>{brand}</span>
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                    style={{ backgroundColor: 'var(--accent-soft)', color: 'var(--accent)', border: '1px solid rgba(200,169,126,0.2)' }}>
+                    {size}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeBrandSize(brand)}
+                    className="p-1 rounded-lg transition-opacity hover:opacity-70"
+                    style={{ color: 'rgba(248,113,113,0.6)' }}
+                  >
+                    <Trash2 size={13} strokeWidth={2} />
+                  </button>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+
+          {/* Add new brand size row */}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              list="brand-suggestions"
+              value={newBrand}
+              onChange={(e) => setNewBrand(e.target.value)}
+              onFocus={() => setFocused('new_brand')}
+              onBlur={() => setFocused(null)}
+              placeholder="Brand name…"
+              className="flex-1 rounded-xl px-3 py-2.5 text-sm focus:outline-none"
+              style={{ ...INPUT_STYLE, ...(focused === 'new_brand' ? { border: INPUT_FOCUS_STYLE, boxShadow: INPUT_FOCUS_SHADOW } : {}) }}
+            />
+            <datalist id="brand-suggestions">
+              {COMMON_BRANDS.map((b) => <option key={b} value={b} />)}
+            </datalist>
+            <select
+              value={newSize}
+              onChange={(e) => setNewSize(e.target.value)}
+              className="rounded-xl px-3 py-2.5 text-sm focus:outline-none appearance-none text-center"
+              style={{ ...INPUT_STYLE, minWidth: 70, ...(focused === 'new_size' ? { border: INPUT_FOCUS_STYLE, boxShadow: INPUT_FOCUS_SHADOW } : {}) }}
+              onFocus={() => setFocused('new_size')}
+              onBlur={() => setFocused(null)}
+            >
+              {SIZE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <motion.button
+              type="button"
+              onClick={addBrandSize}
+              whileTap={{ scale: 0.92 }}
+              className="rounded-xl px-3 py-2.5 flex items-center justify-center"
+              style={{ backgroundColor: 'var(--accent-soft)', border: '1px solid rgba(200,169,126,0.2)', color: 'var(--accent)' }}
+            >
+              <Plus size={16} strokeWidth={2.5} />
+            </motion.button>
+          </div>
         </div>
 
         {/* Save button */}

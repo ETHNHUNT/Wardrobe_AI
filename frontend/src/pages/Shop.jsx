@@ -1,8 +1,25 @@
 import { useState, useEffect, useRef } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { gsap } from 'gsap'
-import { RefreshCw, ExternalLink, TrendingUp, AlertTriangle } from 'lucide-react'
+import { RefreshCw, ExternalLink, TrendingUp, AlertTriangle, Palette } from 'lucide-react'
 import axios from 'axios'
+
+// Color name → CSS color for swatch display
+const COLOR_CSS = {
+  black: '#1a1a1a', white: '#f0ede8', grey: '#9e9e9e', gray: '#9e9e9e',
+  beige: '#f5f0e8', cream: '#fff8e7', charcoal: '#444',
+  navy: '#1a2744', blue: '#2563eb', teal: '#008080', slate: '#708090',
+  indigo: '#4b0082', denim: '#1560bd', 'light blue': '#87ceeb',
+  red: '#dc2626', burgundy: '#800020', maroon: '#800000', orange: '#f97316',
+  rust: '#b45309', terracotta: '#c2673c', pink: '#ec4899',
+  brown: '#7c3f00', camel: '#c19a6b', khaki: '#c3b091', olive: '#6b6b35',
+  tan: '#d2b48c', stone: '#918474', sand: '#c2b280', taupe: '#8b7d7b',
+  yellow: '#fde047', lime: '#84cc16', purple: '#9333ea', coral: '#f87171',
+  mint: '#6ee7b7', cyan: '#22d3ee', green: '#16a34a',
+}
+function getColorCSS(name) {
+  return COLOR_CSS[name?.toLowerCase()] ?? name
+}
 
 const API = import.meta.env.VITE_API_URL
 
@@ -71,7 +88,22 @@ export default function Shop() {
   const [sugLoading, setSugLoading] = useState(false)
   const [sugError, setSugError]     = useState(null)
 
-  useEffect(() => { fetchGaps() }, [])
+  const [paletteData, setPaletteData] = useState(null)
+  const [expandedIdx, setExpandedIdx] = useState(null)  // which suggestion's "Why this?" is open
+
+  useEffect(() => {
+    fetchGaps()
+    fetchPalette()
+  }, [])
+
+  async function fetchPalette() {
+    try {
+      const { data } = await axios.get(`${API}/shop/palette`)
+      setPaletteData(data)
+    } catch {
+      // Palette is non-critical; silence errors
+    }
+  }
 
   async function fetchGaps({ force = false } = {}) {
     setLoading(true)
@@ -118,6 +150,68 @@ export default function Shop() {
       </div>
 
       <div className="px-5 space-y-6">
+
+        {/* ── Section 0: Color Palette Strip — AnimatePresence, appears when data loads ── */}
+        <AnimatePresence>
+          {paletteData && (paletteData.all_colors?.length ?? 0) > 0 && (
+            <motion.section
+              key="palette-strip"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.35 }}
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <Palette size={13} strokeWidth={2} style={{ color: 'var(--accent)' }} />
+                <h2 className="text-xs uppercase tracking-[0.2em]" style={{ color: 'var(--accent)' }}>
+                  Your Palette
+                </h2>
+              </div>
+
+              {/* Top 8 color swatches */}
+              <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+                {(paletteData.all_colors ?? []).slice(0, 8).map((color) => (
+                  <div key={color} className="flex-shrink-0 flex flex-col items-center gap-1">
+                    <div
+                      className="w-8 h-8 rounded-full"
+                      style={{
+                        backgroundColor: getColorCSS(color),
+                        border: '1.5px solid rgba(255,255,255,0.12)',
+                        boxShadow: `0 2px 6px ${getColorCSS(color)}44`,
+                      }}
+                    />
+                    <span className="text-[9px] capitalize" style={{ color: 'var(--text-muted)' }}>{color}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Complementary colors to add */}
+              {(paletteData.complementary_suggestions?.length ?? 0) > 0 && (
+                <div className="mt-3">
+                  <p className="text-[10px] uppercase tracking-wider mb-2" style={{ color: 'rgba(107,101,96,0.6)' }}>
+                    Complementary to add
+                  </p>
+                  <div className="flex gap-2">
+                    {paletteData.complementary_suggestions.slice(0, 4).map((color) => (
+                      <div key={color} className="flex-shrink-0 flex flex-col items-center gap-1">
+                        <div
+                          className="w-8 h-8 rounded-full"
+                          style={{
+                            backgroundColor: getColorCSS(color),
+                            border: '1.5px dashed rgba(200,169,126,0.5)',
+                            boxShadow: `0 2px 6px ${getColorCSS(color)}33`,
+                          }}
+                        />
+                        <span className="text-[9px] capitalize" style={{ color: 'var(--text-primary)' }}>{color}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </motion.section>
+          )}
+        </AnimatePresence>
+
         {/* ── Section A: Occasion Coverage ── */}
         <section>
           <div className="flex items-center justify-between mb-4">
@@ -277,6 +371,9 @@ export default function Shop() {
             <div className="space-y-3">
               {suggestions.map((s, i) => {
                 const ps = PRIORITY_STYLE[s.priority] ?? PRIORITY_STYLE.medium
+                const compatPct = Math.round((s.compatibility_score ?? 0) * 100)
+                const hasMatches = (s.match_count ?? 0) > 0
+                const isExpanded = expandedIdx === i
                 return (
                   <motion.div key={i}
                     initial={{ opacity: 0, y: 10 }}
@@ -296,6 +393,90 @@ export default function Shop() {
                       For <span className="capitalize">{s.occasion}</span> occasions
                     </p>
                     <p className="text-xs mb-3" style={{ color: 'var(--text-muted)', opacity: 0.7 }}>{s.size_note}</p>
+
+                    {/* Compatibility bar — Tailwind CSS width transition */}
+                    <div className="mb-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] uppercase tracking-wider" style={{ color: 'rgba(107,101,96,0.7)' }}>
+                          Wardrobe match
+                        </span>
+                        <span className="text-[10px] font-semibold" style={{
+                          color: compatPct >= 60 ? '#4ADE80' : compatPct >= 30 ? '#FBB846' : 'var(--text-muted)'
+                        }}>
+                          {hasMatches ? `${s.match_count} item${s.match_count !== 1 ? 's' : ''}` : 'No matches yet'}
+                        </span>
+                      </div>
+                      <div className="h-1 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
+                        <div
+                          className="h-full rounded-full transition-all duration-700"
+                          style={{
+                            width: `${compatPct}%`,
+                            backgroundColor: compatPct >= 60 ? '#4ADE80' : compatPct >= 30 ? '#FBB846' : 'rgba(255,255,255,0.2)',
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* "Why this?" expandable — Framer Motion AnimatePresence */}
+                    {hasMatches && (
+                      <div className="mb-3">
+                        <motion.button
+                          onClick={() => setExpandedIdx(isExpanded ? null : i)}
+                          whileTap={{ scale: 0.97 }}
+                          className="flex items-center gap-1 text-[10px] uppercase tracking-wider"
+                          style={{ color: 'var(--accent)' }}
+                        >
+                          <motion.span
+                            animate={{ rotate: isExpanded ? 90 : 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="inline-block"
+                          >▶</motion.span>
+                          {isExpanded ? 'Hide matches' : `See ${s.match_count} match${s.match_count !== 1 ? 'es' : ''}`}
+                        </motion.button>
+
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div
+                              key="matches"
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.25 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="flex gap-2 pt-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+                                {(s.matching_items ?? []).map((mi) => (
+                                  <div key={mi.id} className="flex-shrink-0 flex flex-col items-center gap-1">
+                                    <div
+                                      className="w-12 h-16 rounded-xl overflow-hidden"
+                                      style={{ border: '1px solid rgba(255,255,255,0.08)' }}
+                                    >
+                                      {mi.photo_path ? (
+                                        <img
+                                          src={`${API}/images/${mi.photo_path}`}
+                                          alt={mi.category}
+                                          className="w-full h-full object-cover"
+                                        />
+                                      ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-[10px]"
+                                          style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
+                                          {mi.category?.[0]?.toUpperCase()}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <span className="text-[9px] capitalize text-center max-w-[52px] leading-tight"
+                                      style={{ color: 'var(--text-muted)' }}>
+                                      {mi.brand || mi.category}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
+
                     <a href={s.google_shopping_url} target="_blank" rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 text-xs font-medium transition-opacity hover:opacity-80"
                       style={{ color: 'var(--accent)' }}>

@@ -16,3 +16,6 @@ class ClothingItem(SQLModel, table=True):
     date_added: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     times_worn: int = 0
     notes: str | None = None
+    # Iteration 1: garment physical specs (actual garment dimensions, not body measurements)
+    garment_measurements: str = "{}"  # JSON: {"chest_width_cm": 54, "body_length_cm": 72, "sleeve_cm": 62, "waist_cm": 82}
+    material: str | None = None       # e.g. "100% cotton" or "98% cotton 2% elastane"

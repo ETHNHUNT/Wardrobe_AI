@@ -1,5 +1,6 @@
 import json
 from urllib.parse import quote_plus
+from services.compatibility_service import score_item_compatibility, build_candidate_from_gap_item
 
 OCCASIONS = ["casual", "work", "formal", "sport", "outdoor"]
 
@@ -95,11 +96,13 @@ def build_suggestions(
     profile: dict,
     brand: str | None,
     budget_cad: float | None,
+    wardrobe_items: list[dict] | None = None,
 ) -> list[dict]:
     """
     Build shopping suggestion records from gap analysis output.
     One suggestion per missing item across all gaps.
-    Sorted high → medium → low priority.
+    Sorted by compatibility × priority, then high → medium → low.
+    Includes compatibility_score and matching_items when wardrobe_items provided.
     """
     priority_order = {"high": 0, "medium": 1, "low": 2}
     suggestions = []
@@ -120,6 +123,12 @@ def build_suggestions(
             category = _infer_category_from_string(missing_item)
             size_note = infer_size(category, profile, brand)
 
+            # Compatibility scoring (Iteration 4)
+            compat = {"score": 0.0, "match_count": 0, "matching_items": []}
+            if wardrobe_items:
+                candidate = build_candidate_from_gap_item(missing_item, occasion)
+                compat = score_item_compatibility(candidate, wardrobe_items)
+
             suggestions.append({
                 "item": missing_item,
                 "occasion": occasion,
@@ -127,7 +136,14 @@ def build_suggestions(
                 "size_note": size_note,
                 "search_query": search_query,
                 "google_shopping_url": build_google_shopping_url(search_query),
+                "compatibility_score": compat["score"],
+                "match_count": compat["match_count"],
+                "matching_items": compat["matching_items"],
             })
 
-    suggestions.sort(key=lambda s: priority_order.get(s["priority"], 1))
+    # Sort: priority first, then by compatibility score descending
+    suggestions.sort(key=lambda s: (
+        priority_order.get(s["priority"], 1),
+        -s["compatibility_score"],
+    ))
     return suggestions

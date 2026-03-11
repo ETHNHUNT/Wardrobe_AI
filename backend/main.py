@@ -14,7 +14,7 @@ from models.user import UserProfile      # noqa: F401
 from models.item import ClothingItem     # noqa: F401
 from models.outfit import SavedOutfit    # noqa: F401
 
-from database import create_db_and_tables
+from database import create_db_and_tables, run_migrations
 from routers import profile, items, outfits, shop
 
 
@@ -23,6 +23,7 @@ async def lifespan(app: FastAPI):
     # Ensure images directory exists before StaticFiles serves from it
     os.makedirs("data/images", exist_ok=True)
     create_db_and_tables()
+    run_migrations()   # Safe on every restart; adds new columns without dropping data
     yield
 
 
