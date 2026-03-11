@@ -5,6 +5,7 @@ import Navbar from './components/Navbar'
 import SplashScreen from './components/SplashScreen'
 import NoiseOverlay from './components/NoiseOverlay'
 import ErrorBoundary from './components/ErrorBoundary'
+import { ToastProvider } from './components/Toast'
 import Wardrobe from './pages/Wardrobe'
 import AddItem from './pages/AddItem'
 import Profile from './pages/Profile'
@@ -47,6 +48,7 @@ export default function App() {
   )
 
   return (
+    <ToastProvider>
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* Grain texture overlay — luxury depth (z-index 1, pointer-events-none) */}
       <NoiseOverlay />
@@ -68,5 +70,6 @@ export default function App() {
       </AnimatePresence>
       <Navbar />
     </div>
+    </ToastProvider>
   )
 }

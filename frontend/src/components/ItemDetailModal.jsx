@@ -4,6 +4,7 @@ import { X, Trash2, Tag, Pencil, CheckCircle2, Ruler } from 'lucide-react'
 import axios from 'axios'
 import LuxSelect from './LuxSelect'
 import { parseJson } from '../lib/utils'
+import { useToast } from './Toast'
 
 const API_URL = import.meta.env.VITE_API_URL
 
@@ -45,6 +46,7 @@ export default function ItemDetailModal({ item, onClose, onDeleted, onUpdated })
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [fitResult, setFitResult] = useState(null)
   const [fitLoading, setFitLoading] = useState(false)
+  const { toast } = useToast()
 
   const [form, setForm] = useState({
     category:   item.category ?? '',
@@ -84,8 +86,10 @@ export default function ItemDetailModal({ item, onClose, onDeleted, onUpdated })
       const { data } = await axios.put(`${API_URL}/items/${item.id}`, payload)
       onUpdated && onUpdated(data)
       setEditing(false)
+      toast({ message: 'Changes saved', type: 'success', duration: 2500 })
     } catch {
       setError('Failed to save changes.')
+      toast({ message: 'Failed to save changes', type: 'error' })
     } finally {
       setSaving(false)
     }
@@ -110,8 +114,10 @@ export default function ItemDetailModal({ item, onClose, onDeleted, onUpdated })
         material:   data.material ?? '',
         garment_measurements: parseJson(data.garment_measurements ?? '{}', {}),
       })
+      toast({ message: 'AI re-tagged successfully', type: 'success' })
     } catch {
       setError('Re-tagging failed. Is Ollama running?')
+      toast({ message: 'Re-tag failed — is Ollama running?', type: 'error' })
     } finally {
       setRetagging(false)
     }
@@ -136,9 +142,11 @@ export default function ItemDetailModal({ item, onClose, onDeleted, onUpdated })
     try {
       await axios.delete(`${API_URL}/items/${item.id}`)
       onDeleted && onDeleted(item.id)
+      toast({ message: 'Item removed from wardrobe', type: 'default', duration: 2500 })
       onClose()
     } catch {
       setError('Failed to delete item.')
+      toast({ message: 'Failed to delete item', type: 'error' })
       setDeleting(false)
       setConfirmDelete(false)
     }

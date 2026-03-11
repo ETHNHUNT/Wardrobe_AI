@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { CheckCircle2 } from 'lucide-react'
 import axios from 'axios'
 import { parseJson } from '../lib/utils'
+import { useToast } from './Toast'
 
 const API_URL = import.meta.env.VITE_API_URL
 
@@ -27,6 +28,7 @@ export default function ItemCard({ item, onClick, onWorn }) {
   const [timesWorn, setTimesWorn] = useState(item.times_worn ?? 0)
   const [marking, setMarking]     = useState(false)
   const [wornFlash, setWornFlash] = useState(false)
+  const { toast } = useToast()
 
   useEffect(() => {
     if (!wornFlash) return
@@ -43,8 +45,9 @@ export default function ItemCard({ item, onClick, onWorn }) {
       setTimesWorn(data.times_worn)
       setWornFlash(true)
       onWorn && onWorn(item.id, data.times_worn)
+      toast({ message: `Marked worn — ${data.times_worn}× total`, type: 'success', duration: 2500 })
     } catch {
-      // silently ignore
+      toast({ message: 'Could not update worn count', type: 'error' })
     } finally {
       setMarking(false)
     }
