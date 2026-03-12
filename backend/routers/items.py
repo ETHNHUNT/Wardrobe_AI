@@ -16,6 +16,7 @@ from services.product_lookup_service import lookup_product, lookup_from_label_ph
 from services.color_service import extract_dominant_color_from_image
 from services.fit_service import verify_garment_fit
 from models.user import UserProfile
+from routers.shop import invalidate_gaps_cache
 
 router = APIRouter()
 IMAGES_DIR = Path("data/images")
@@ -270,6 +271,7 @@ def delete_item(item_id: int, session: Session = Depends(get_session)):
 
     session.delete(item)
     session.commit()
+    invalidate_gaps_cache()
     return {"ok": True}
 
 
