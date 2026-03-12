@@ -18,6 +18,7 @@
 | File | Purpose |
 |------|---------|
 | `CLAUDE.md` | Project instructions, tech stack, rules |
+| `README.md` | Project overview, quick start, API reference, data models |
 | `test_ollama_tagging.py` | Standalone test: creates synthetic image, calls AI tag endpoint |
 | `.plan.md` | Historical: Spline 3D integration strategy |
 | `WardrobeAI PRD.docx` | Product requirements document (binary) |
@@ -50,6 +51,8 @@
 | `frontend/src/index.css` | CSS variables (theme), Tailwind base, keyframes |
 | `frontend/src/lib/utils.js` | `cn()` class merger, `parseJson()` safe parser |
 | `frontend/src/lib/scenes.js` | Spline scene URLs, `SPLASH_SEEN_KEY` |
+| `frontend/src/lib/colors.js` | Shared `COLOR_MAP` + `getColorCSS()` color resolver |
+| `frontend/src/lib/constants.js` | Shared `CATEGORIES`, `OCCASIONS`, `SEASONS`, `FIT_TYPES`, `INPUT_STYLE`, `toggleArr()`, `isPhotoValid()` |
 | `frontend/src/pages/Wardrobe.jsx` | Main wardrobe grid + filters + palette view |
 | `frontend/src/pages/AddItem.jsx` | 6-phase upload flow: idle→camera→preview→upload→form→done |
 | `frontend/src/pages/OutfitBuilder.jsx` | Generate/Saved/History 3-tab outfit manager |

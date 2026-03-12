@@ -9,19 +9,9 @@ import LuxSelect from '../components/LuxSelect'
 import PhaseIndicator from '../components/PhaseIndicator'
 import { parseJson } from '../lib/utils'
 import { SCENES } from '../lib/scenes'
+import { CATEGORIES, FIT_TYPES, OCCASIONS, SEASONS, INPUT_STYLE, toggleArr } from '../lib/constants'
 
 const API_URL = import.meta.env.VITE_API_URL
-
-const CATEGORIES = ['tshirt', 'shirt', 'polo', 'jacket', 'hoodie', 'sweater', 'jeans', 'chinos', 'trousers', 'shorts', 'shoes', 'sneakers', 'boots', 'formal_shoes', 'accessory', 'other']
-const FIT_TYPES  = ['slim', 'regular', 'oversized', 'relaxed']
-const OCCASIONS  = ['casual', 'work', 'formal', 'sport', 'outdoor']
-const SEASONS    = ['spring', 'summer', 'fall', 'winter']
-
-const INPUT_STYLE = {
-  backgroundColor: 'var(--bg-elevated)',
-  color: 'var(--text-primary)',
-  border: '1px solid rgba(255,255,255,0.08)',
-}
 
 // State machine: idle → previewing → uploading → done | manual_form
 export default function AddItem() {
@@ -213,10 +203,7 @@ export default function AddItem() {
 
   // ── Manual form ──────────────────────────────────────────────────────────
   function toggleArrayItem(key, value) {
-    setManualForm((prev) => {
-      const arr = prev[key]
-      return { ...prev, [key]: arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value] }
-    })
+    setManualForm((prev) => ({ ...prev, [key]: toggleArr(prev[key], value) }))
   }
 
   async function saveManualTags(e) {

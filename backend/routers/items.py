@@ -11,7 +11,6 @@ from sqlmodel import Session, select
 from database import get_session
 from models.item import ClothingItem
 from services.ai_service import tag_clothing_image, infer_garment_measurements
-from services.barcode_service import lookup_upc
 from services.product_lookup_service import lookup_product, lookup_from_label_photo
 from services.color_service import extract_dominant_color_from_image
 from services.fit_service import verify_garment_fit

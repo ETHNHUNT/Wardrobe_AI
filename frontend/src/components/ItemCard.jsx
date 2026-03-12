@@ -3,25 +3,11 @@ import { motion } from 'framer-motion'
 import { CheckCircle2 } from 'lucide-react'
 import axios from 'axios'
 import { parseJson } from '../lib/utils'
+import { getColorCSS, COLOR_MAP } from '../lib/colors'
+import { isPhotoValid } from '../lib/constants'
 import { useToast } from './Toast'
 
 const API_URL = import.meta.env.VITE_API_URL
-
-// Map common color names to actual CSS color values for swatches
-const COLOR_MAP = {
-  black: '#1a1a1a', white: '#f5f5f5', navy: '#1e2a4a', grey: '#808080',
-  gray: '#808080', beige: '#d4b896', khaki: '#c3b091', brown: '#7a4f2e',
-  burgundy: '#6d2b3d', red: '#c0392b', blue: '#2980b9', lightblue: '#87ceeb',
-  green: '#27ae60', olive: '#6b6b2f', yellow: '#f1c40f', orange: '#e67e22',
-  pink: '#e91e8c', purple: '#8e44ad', cream: '#fffdd0', camel: '#c19a6b',
-  tan: '#d2b48c', charcoal: '#36454f', teal: '#008080', mint: '#98ff98',
-  denim: '#1560bd', indigo: '#4b0082', maroon: '#800000', ivory: '#fffff0',
-}
-
-function resolveColor(name) {
-  const lower = (name ?? '').toLowerCase().replace(/[\s-]/g, '')
-  return COLOR_MAP[lower] ?? name
-}
 
 export default function ItemCard({ item, onClick, onWorn }) {
   const colors   = parseJson(item.colors)
@@ -71,7 +57,7 @@ export default function ItemCard({ item, onClick, onWorn }) {
     >
       {/* Photo */}
       <div className="aspect-[3/4] relative overflow-hidden" style={{ backgroundColor: '#0f0f0f' }}>
-        {item.photo_path && item.photo_path !== 'tmp' ? (
+        {isPhotoValid(item) ? (
           <img
             src={`${API_URL}/images/${item.photo_path}`}
             alt={item.category}
@@ -129,7 +115,7 @@ export default function ItemCard({ item, onClick, onWorn }) {
                 title={color}
                 className="w-3 h-3 rounded-full inline-block"
                 style={{
-                  backgroundColor: resolveColor(color),
+                  backgroundColor: getColorCSS(color),
                   boxShadow: '0 0 0 1px rgba(255,255,255,0.12)',
                 }}
               />

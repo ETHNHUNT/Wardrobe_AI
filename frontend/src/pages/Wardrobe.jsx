@@ -7,25 +7,8 @@ import ItemDetailModal from '../components/ItemDetailModal'
 import SplineScene from '../components/SplineScene'
 import TextShimmer from '../components/TextShimmer'
 import { SCENES } from '../lib/scenes'
-
-// Color name → approximate CSS display color (for swatch rendering only)
-const COLOR_CSS = {
-  black: '#1a1a1a', white: '#f0ede8', grey: '#9e9e9e', gray: '#9e9e9e',
-  beige: '#f5f0e8', cream: '#fff8e7', 'off-white': '#f5f0e8', charcoal: '#444',
-  navy: '#1a2744', blue: '#2563eb', 'royal blue': '#4169e1', cobalt: '#0047ab',
-  teal: '#008080', slate: '#708090', indigo: '#4b0082', denim: '#1560bd',
-  'light blue': '#87ceeb', 'sky blue': '#87ceeb',
-  red: '#dc2626', burgundy: '#800020', maroon: '#800000', orange: '#f97316',
-  rust: '#b45309', terracotta: '#c2673c', brick: '#9c3b3b', pink: '#ec4899',
-  brown: '#7c3f00', camel: '#c19a6b', khaki: '#c3b091', olive: '#6b6b35',
-  tan: '#d2b48c', stone: '#918474', sand: '#c2b280', taupe: '#8b7d7b',
-  yellow: '#fde047', lime: '#84cc16', purple: '#9333ea', violet: '#8b5cf6',
-  coral: '#f87171', mint: '#6ee7b7', cyan: '#22d3ee', green: '#16a34a',
-  white: '#f0ede8',
-}
-function getColorCSS(name) {
-  return COLOR_CSS[name?.toLowerCase()] ?? name
-}
+import { getColorCSS } from '../lib/colors'
+import { CATEGORIES as BASE_CATEGORIES, OCCASIONS as BASE_OCCASIONS, SEASONS as BASE_SEASONS } from '../lib/constants'
 
 const GROUP_ORDER = ['neutrals', 'cool', 'warm', 'earth', 'bright']
 const GROUP_LABEL = { neutrals: 'Neutrals', cool: 'Cool', warm: 'Warm', earth: 'Earth', bright: 'Bright' }
@@ -39,13 +22,9 @@ const GROUP_COLOR = {
 
 const API_URL = import.meta.env.VITE_API_URL
 
-const CATEGORIES = [
-  '', 'tshirt', 'shirt', 'polo', 'jacket', 'hoodie', 'sweater',
-  'jeans', 'chinos', 'trousers', 'shorts', 'shoes', 'sneakers',
-  'boots', 'formal_shoes', 'accessory', 'other',
-]
-const OCCASIONS = ['', 'casual', 'work', 'formal', 'sport', 'outdoor']
-const SEASONS   = ['', 'spring', 'summer', 'fall', 'winter']
+const CATEGORIES = ['', ...BASE_CATEGORIES]
+const OCCASIONS  = ['', ...BASE_OCCASIONS]
+const SEASONS    = ['', ...BASE_SEASONS]
 
 const CATEGORY_LABELS = {
   '': 'All',

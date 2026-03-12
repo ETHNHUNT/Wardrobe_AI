@@ -13,6 +13,13 @@ from services.ai_service import generate_outfits
 router = APIRouter()
 
 
+def _parse_ids(raw: str) -> list[int]:
+    try:
+        return json.loads(raw or "[]")
+    except json.JSONDecodeError:
+        return []
+
+
 class GenerateRequest(BaseModel):
     occasion: str
     season: str
@@ -101,12 +108,6 @@ def list_outfits(
     outfits = session.exec(query).all()
 
     # Collect all item IDs across all outfits, fetch in a single query
-    def _parse_ids(raw: str) -> list[int]:
-        try:
-            return json.loads(raw or "[]")
-        except json.JSONDecodeError:
-            return []
-
     all_ids = [iid for o in outfits for iid in _parse_ids(o.item_ids)]
     if all_ids:
         item_map = {
@@ -204,12 +205,6 @@ def outfit_history(session: Session = Depends(get_session)):
         .order_by(SavedOutfit.worn_date.desc())
     )
     outfits = session.exec(query).all()
-
-    def _parse_ids(raw: str) -> list[int]:
-        try:
-            return json.loads(raw or "[]")
-        except json.JSONDecodeError:
-            return []
 
     all_ids = [iid for o in outfits for iid in _parse_ids(o.item_ids)]
     if all_ids:
