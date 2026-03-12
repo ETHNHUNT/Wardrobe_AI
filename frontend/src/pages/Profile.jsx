@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Trash2 } from 'lucide-react'
 import axios from 'axios'
+import { useToast } from '../components/Toast'
 
 const COMMON_BRANDS = ['Zara', 'H&M', 'Uniqlo', 'Mango', 'Gap', 'Levi\'s', 'Nike', 'Adidas', 'Puma', 'Reebok', 'Gucci', 'Armani', 'Calvin Klein', 'Tommy Hilfiger', 'Ralph Lauren', 'Other']
 const SIZE_OPTIONS  = ['XXS', 'XS', 'S', 'S/M', 'M', 'L', 'L/XL', 'XL', 'XXL', 'XXXL', '28', '30', '32', '34', '36', '38', '40', '42']
@@ -57,12 +58,8 @@ export default function Profile() {
   const [newSize, setNewSize]     = useState('M')
   const [loading, setLoading]     = useState(true)
   const [saving, setSaving]       = useState(false)
-  const [toast, setToast]         = useState('')
-  const [toastOk, setToastOk]     = useState(true)
   const [focused, setFocused]     = useState(null)
-  const toastTimerRef = useRef(null)
-
-  useEffect(() => () => clearTimeout(toastTimerRef.current), [])
+  const { toast } = useToast()
 
   useEffect(() => {
     async function loadProfile() {
@@ -124,16 +121,10 @@ export default function Profile() {
         else { delete payload[field.key] }
       }
       await axios.post(`${API_URL}/profile`, payload)
-      setToastOk(true)
-      setToast('Profile saved successfully')
-      clearTimeout(toastTimerRef.current)
-      toastTimerRef.current = setTimeout(() => setToast(''), 3000)
+      toast({ message: 'Profile saved successfully', type: 'success', duration: 3000 })
     } catch (err) {
       console.error('Failed to save profile:', err)
-      setToastOk(false)
-      setToast('Save failed — check backend connection.')
-      clearTimeout(toastTimerRef.current)
-      toastTimerRef.current = setTimeout(() => setToast(''), 3000)
+      toast({ message: 'Save failed — check backend connection.', type: 'error', duration: 3000 })
     } finally {
       setSaving(false)
     }
@@ -292,26 +283,6 @@ export default function Profile() {
         </motion.button>
       </form>
 
-      {/* Toast notification */}
-      <AnimatePresence>
-        {toast && (
-          <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 16, scale: 0.95 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-            className="fixed bottom-24 left-5 right-5 text-sm text-center py-3.5 rounded-2xl z-[200]"
-            style={{
-              backgroundColor: 'var(--bg-elevated)',
-              border: `1px solid ${toastOk ? 'rgba(74,222,128,0.25)' : 'rgba(248,113,113,0.25)'}`,
-              color: toastOk ? '#4ADE80' : '#F87171',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-            }}
-          >
-            {toast}
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   )
 }

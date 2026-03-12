@@ -4,10 +4,9 @@ import { Sparkles, Sun, Clock, CheckCircle2 } from 'lucide-react'
 import { gsap } from 'gsap'
 import axios from 'axios'
 import OutfitCard from '../components/OutfitCard'
+import { OCCASIONS, SEASONS } from '../lib/constants'
 
 const API_URL = import.meta.env.VITE_API_URL
-const OCCASIONS = ['casual', 'work', 'formal', 'sport', 'outdoor']
-const SEASONS   = ['spring', 'summer', 'fall', 'winter']
 
 function inferCurrentSeason() {
   const m = new Date().getMonth() + 1

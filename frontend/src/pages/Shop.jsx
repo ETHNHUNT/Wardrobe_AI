@@ -3,27 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { gsap } from 'gsap'
 import { RefreshCw, ExternalLink, TrendingUp, AlertTriangle, Palette } from 'lucide-react'
 import axios from 'axios'
-
-// Color name → CSS color for swatch display
-const COLOR_CSS = {
-  black: '#1a1a1a', white: '#f0ede8', grey: '#9e9e9e', gray: '#9e9e9e',
-  beige: '#f5f0e8', cream: '#fff8e7', charcoal: '#444',
-  navy: '#1a2744', blue: '#2563eb', teal: '#008080', slate: '#708090',
-  indigo: '#4b0082', denim: '#1560bd', 'light blue': '#87ceeb',
-  red: '#dc2626', burgundy: '#800020', maroon: '#800000', orange: '#f97316',
-  rust: '#b45309', terracotta: '#c2673c', pink: '#ec4899',
-  brown: '#7c3f00', camel: '#c19a6b', khaki: '#c3b091', olive: '#6b6b35',
-  tan: '#d2b48c', stone: '#918474', sand: '#c2b280', taupe: '#8b7d7b',
-  yellow: '#fde047', lime: '#84cc16', purple: '#9333ea', coral: '#f87171',
-  mint: '#6ee7b7', cyan: '#22d3ee', green: '#16a34a',
-}
-function getColorCSS(name) {
-  return COLOR_CSS[name?.toLowerCase()] ?? name
-}
+import { getColorCSS } from '../lib/colors'
+import { OCCASIONS, INPUT_STYLE } from '../lib/constants'
 
 const API = import.meta.env.VITE_API_URL
-
-const OCCASIONS = ['casual', 'work', 'formal', 'sport', 'outdoor']
 
 const PRIORITY_STYLE = {
   high:   { color: '#F87171', bg: 'rgba(248,113,113,0.08)',   border: 'rgba(248,113,113,0.2)'   },
@@ -69,12 +52,6 @@ function PulsingDots() {
       <span className="text-xs ml-1" style={{ color: 'var(--text-muted)' }}>Analyzing wardrobe…</span>
     </div>
   )
-}
-
-const INPUT_STYLE = {
-  backgroundColor: 'var(--bg-elevated)',
-  color: 'var(--text-primary)',
-  border: '1px solid rgba(255,255,255,0.08)',
 }
 
 export default function Shop() {

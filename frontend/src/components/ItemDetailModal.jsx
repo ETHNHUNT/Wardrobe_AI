@@ -4,38 +4,11 @@ import { X, Trash2, Tag, Pencil, CheckCircle2, Ruler } from 'lucide-react'
 import axios from 'axios'
 import LuxSelect from './LuxSelect'
 import { parseJson } from '../lib/utils'
+import { getColorCSS } from '../lib/colors'
+import { CATEGORIES, FIT_TYPES, OCCASIONS, SEASONS, INPUT_STYLE, toggleArr, isPhotoValid } from '../lib/constants'
 import { useToast } from './Toast'
 
 const API_URL = import.meta.env.VITE_API_URL
-
-const CATEGORIES = ['tshirt', 'shirt', 'polo', 'jacket', 'hoodie', 'sweater', 'jeans', 'chinos', 'trousers', 'shorts', 'shoes', 'sneakers', 'boots', 'formal_shoes', 'accessory', 'other']
-const FIT_TYPES  = ['slim', 'regular', 'oversized', 'relaxed']
-const OCCASIONS  = ['casual', 'work', 'formal', 'sport', 'outdoor']
-const SEASONS    = ['spring', 'summer', 'fall', 'winter']
-
-const INPUT_STYLE = {
-  backgroundColor: 'var(--bg-elevated)',
-  color: 'var(--text-primary)',
-  border: '1px solid rgba(255,255,255,0.08)',
-}
-
-const COLOR_MAP = {
-  black: '#1a1a1a', white: '#f5f5f5', navy: '#1e2a4a', grey: '#808080',
-  gray: '#808080', beige: '#d4b896', khaki: '#c3b091', brown: '#7a4f2e',
-  burgundy: '#6d2b3d', red: '#c0392b', blue: '#2980b9', lightblue: '#87ceeb',
-  green: '#27ae60', olive: '#6b6b2f', yellow: '#f1c40f', orange: '#e67e22',
-  pink: '#e91e8c', purple: '#8e44ad', cream: '#fffdd0', camel: '#c19a6b',
-  tan: '#d2b48c', charcoal: '#36454f', teal: '#008080', mint: '#98ff98',
-  denim: '#1560bd', indigo: '#4b0082', maroon: '#800000', ivory: '#fffff0',
-}
-function resolveColor(name) {
-  const lower = (name ?? '').toLowerCase().replace(/[\s-]/g, '')
-  return COLOR_MAP[lower] ?? name
-}
-
-function toggleArr(arr, val) {
-  return arr.includes(val) ? arr.filter((v) => v !== val) : [...arr, val]
-}
 
 export default function ItemDetailModal({ item, onClose, onDeleted, onUpdated }) {
   const [editing, setEditing] = useState(false)
@@ -211,7 +184,7 @@ export default function ItemDetailModal({ item, onClose, onDeleted, onUpdated })
         </div>
 
         {/* Photo */}
-        {item.photo_path && item.photo_path !== 'tmp' && (
+        {isPhotoValid(item) && (
           <div className="px-5 pb-4">
             <img
               src={`${API_URL}/images/${item.photo_path}`}
@@ -230,7 +203,7 @@ export default function ItemDetailModal({ item, onClose, onDeleted, onUpdated })
                 key={i}
                 title={c}
                 className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: resolveColor(c), boxShadow: '0 0 0 1px rgba(255,255,255,0.15)' }}
+                style={{ backgroundColor: getColorCSS(c), boxShadow: '0 0 0 1px rgba(255,255,255,0.15)' }}
               />
             ))}
             <span className="text-xs ml-1" style={{ color: 'var(--text-muted)' }}>
