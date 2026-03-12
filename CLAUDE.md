@@ -479,3 +479,4 @@ All 4 build phases are complete. This section records what was built.
 - Handle Ollama connection error: `httpx.ConnectError` if Ollama is not running
 - VRAM: do not run GPU-intensive apps while using wardrobe AI (GTX 1050Ti 4GB is shared)
 - `preserve_existing=True` on retag: AI result never clobbers manually edited fields
+- **`projectstructure.md` must be kept in sync**: After ANY code change — new file, new endpoint, new model field, component added/removed, logic change — update `projectstructure.md` in the same commit. Never leave it stale.
