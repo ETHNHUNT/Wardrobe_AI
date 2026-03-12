@@ -5,6 +5,10 @@
 > All information is derived from actual source code, no assumptions.
 >
 > **Last updated:** 2026-03-12
+>
+> **Maintenance rule:** This file MUST be updated in the same commit as any code change.
+> New file → Section 0. New endpoint → Sections 2 & 5. New model field → Section 3.
+> New component → Section 10. Data flow change → Section 7. Never commit code without syncing this file.
 
 ---
 
