@@ -18,6 +18,10 @@ _gaps_cache: dict = {"result": None, "item_count": -1, "ts": 0.0}
 _GAPS_CACHE_TTL = 30  # seconds
 
 
+def invalidate_gaps_cache():
+    _gaps_cache.update({"result": None, "item_count": -1, "ts": 0.0})
+
+
 async def _get_gaps_cached(items: list[dict], *, force: bool = False) -> dict:
     now = time.monotonic()
     if (

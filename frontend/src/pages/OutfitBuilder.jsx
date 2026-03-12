@@ -136,6 +136,7 @@ export default function OutfitBuilder() {
     try {
       const { data } = await axios.post(`${API_URL}/outfits/${outfitId}/worn`)
       setSavedOutfits((prev) => prev.map((o) => o.id === outfitId ? { ...o, times_worn: data.times_worn, worn_date: data.worn_date } : o))
+      await fetchHistory()
     } catch {
       setError('Failed to mark outfit as worn.')
     } finally {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Trash2, Tag, Pencil, CheckCircle2, Ruler } from 'lucide-react'
 import axios from 'axios'
@@ -47,6 +47,14 @@ export default function ItemDetailModal({ item, onClose, onDeleted, onUpdated })
   const [fitResult, setFitResult] = useState(null)
   const [fitLoading, setFitLoading] = useState(false)
   const { toast } = useToast()
+
+  useEffect(() => {
+    setFitResult(null)
+    setFitLoading(false)
+    setEditing(false)
+    setConfirmDelete(false)
+    setError('')
+  }, [item?.id])
 
   const [form, setForm] = useState({
     category:   item.category ?? '',
