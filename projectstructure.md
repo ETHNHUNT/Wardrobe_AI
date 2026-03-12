@@ -730,7 +730,12 @@ toast({ message: "Saved!", type: "success", duration: 3000 })
 
 ### `ErrorBoundary.jsx`
 
-Class component. Catches render errors in subtree. Renders `null` on error (silent failure, no white screen). Logs to console.
+Class component. Catches render errors in subtree. Logs to console.
+
+**Fallback UI** (shown on error):
+- AlertTriangle icon (red)
+- "Something went wrong" heading + error message (monospace, dimmed)
+- "Try Again" button → `setState({ hasError: false })` to attempt recovery
 
 ---
 
