@@ -460,10 +460,13 @@ All 4 build phases are complete. This section records what was built.
 
 ### Backlog (Not Yet Implemented)
 
-- Gemini 2.5 Flash-Lite fallback — referenced in config but no actual code path exists
-- Color palette gap detection (planned in PRD Phase 3)
-- Versatility score per shopping suggestion ("this chino matches 7 of your tops")
-- Dedicated outfit history view
+- Gemini 2.5 Flash-Lite fallback — referenced in config but no actual code path exists (tracked: ISSUES.md E2)
+- Versatility score per shopping suggestion — "this chino matches 7 of your tops" (tracked: ISSUES.md E3)
+
+### Moved from Backlog — Now Implemented ✅
+
+- Color palette gap detection — implemented in `Shop.jsx` palette rings + `/shop/palette` endpoint
+- Dedicated outfit history view — implemented in `OutfitBuilder.jsx` History tab + `/outfits/history` endpoint
 
 -----
 

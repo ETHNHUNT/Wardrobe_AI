@@ -256,6 +256,7 @@ def update_item(item_id: int, data: ClothingItemUpdate, session: Session = Depen
     session.add(item)
     session.commit()
     session.refresh(item)
+    invalidate_gaps_cache()
     return item
 
 

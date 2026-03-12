@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { CheckCircle2 } from 'lucide-react'
 import axios from 'axios'
 import { parseJson } from '../lib/utils'
-import { getColorCSS, COLOR_MAP } from '../lib/colors'
+import { getColorCSS } from '../lib/colors'
 import { isPhotoValid } from '../lib/constants'
 import { useToast } from './Toast'
 

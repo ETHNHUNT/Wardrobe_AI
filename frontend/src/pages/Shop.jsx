@@ -4,7 +4,7 @@ import { gsap } from 'gsap'
 import { RefreshCw, ExternalLink, TrendingUp, AlertTriangle, Palette } from 'lucide-react'
 import axios from 'axios'
 import { getColorCSS } from '../lib/colors'
-import { OCCASIONS, INPUT_STYLE } from '../lib/constants'
+import { OCCASIONS, INPUT_STYLE, isPhotoValid } from '../lib/constants'
 
 const API = import.meta.env.VITE_API_URL
 
@@ -428,7 +428,7 @@ export default function Shop() {
                                       className="w-12 h-16 rounded-xl overflow-hidden"
                                       style={{ border: '1px solid rgba(255,255,255,0.08)' }}
                                     >
-                                      {mi.photo_path ? (
+                                      {isPhotoValid(mi) ? (
                                         <img
                                           src={`${API}/images/${mi.photo_path}`}
                                           alt={mi.category}

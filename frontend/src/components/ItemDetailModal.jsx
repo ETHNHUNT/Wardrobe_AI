@@ -70,7 +70,6 @@ export default function ItemDetailModal({ item, onClose, onDeleted, onUpdated })
       toast({ message: 'Changes saved', type: 'success', duration: 2500 })
     } catch {
       setError('Failed to save changes.')
-      toast({ message: 'Failed to save changes', type: 'error' })
     } finally {
       setSaving(false)
     }
@@ -98,7 +97,6 @@ export default function ItemDetailModal({ item, onClose, onDeleted, onUpdated })
       toast({ message: 'AI re-tagged successfully', type: 'success' })
     } catch {
       setError('Re-tagging failed. Is Ollama running?')
-      toast({ message: 'Re-tag failed — is Ollama running?', type: 'error' })
     } finally {
       setRetagging(false)
     }

@@ -4,7 +4,7 @@ import { Sparkles, Sun, Clock, CheckCircle2 } from 'lucide-react'
 import { gsap } from 'gsap'
 import axios from 'axios'
 import OutfitCard from '../components/OutfitCard'
-import { OCCASIONS, SEASONS } from '../lib/constants'
+import { OCCASIONS, SEASONS, isPhotoValid } from '../lib/constants'
 
 const API_URL = import.meta.env.VITE_API_URL
 
@@ -436,7 +436,7 @@ export default function OutfitBuilder() {
                       {(o.items ?? []).slice(0, 5).map((item) => (
                         <div key={item.id} className="flex-shrink-0 w-14 h-18 rounded-xl overflow-hidden"
                           style={{ height: 72, border: '1px solid rgba(255,255,255,0.07)' }}>
-                          {item.photo_path ? (
+                          {isPhotoValid(item) ? (
                             <img src={`${API_URL}/images/${item.photo_path}`} alt={item.category}
                               className="w-full h-full object-cover" />
                           ) : (
