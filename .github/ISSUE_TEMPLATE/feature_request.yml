@@ -1,0 +1,57 @@
+name: Feature Request
+description: Suggest an improvement or new feature for WardrobeAI
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Got an idea to make WardrobeAI better? Describe it here.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Backend / API
+        - Frontend / UI
+        - AI Tagging (Ollama)
+        - Barcode Scanner
+        - Outfit Builder
+        - Shopping / Gap Analysis
+        - Profile / Measurements
+        - Performance
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / Motivation
+      description: What problem does this solve, or what would it improve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - "high — core workflow blocked without it"
+        - "medium — noticeable improvement"
+        - "low — nice to have"
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
