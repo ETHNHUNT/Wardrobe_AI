@@ -1,0 +1,72 @@
+name: Bug Report
+description: Report a bug in WardrobeAI
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please fill in as much detail as possible.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of the app is affected?
+      options:
+        - Backend / API
+        - Frontend / UI
+        - AI Tagging (Ollama)
+        - Barcode Scanner
+        - Outfit Builder
+        - Shopping / Gap Analysis
+        - Profile / Measurements
+        - Database / Storage
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+      placeholder: "When I click X, Y happens instead of Z."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      placeholder: |
+        1. Go to ...
+        2. Click on ...
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behaviour
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - "critical — app crashes / data loss"
+        - "high — major feature broken"
+        - "medium — degraded experience"
+        - "low — cosmetic / minor"
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Logs, screenshots, or anything else helpful.

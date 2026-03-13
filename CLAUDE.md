@@ -480,3 +480,14 @@ All 4 build phases are complete. This section records what was built.
 - VRAM: do not run GPU-intensive apps while using wardrobe AI (GTX 1050Ti 4GB is shared)
 - `preserve_existing=True` on retag: AI result never clobbers manually edited fields
 - **`projectstructure.md` must be kept in sync**: After ANY code change — new file, new endpoint, new model field, component added/removed, logic change — update `projectstructure.md` in the same commit. Never leave it stale.
+
+-----
+
+## Issue Tracking & Versioning
+
+- **Issue templates** live in `.github/ISSUE_TEMPLATE/` — use `bug_report.yml` for bugs, `feature_request.yml` for enhancements.
+- **PR template** is at `.github/pull_request_template.md` — fill every section; PRs with empty checklists will not be merged.
+- **VERSION file** (`/VERSION`) holds the current semver string. Bump it on every release commit: patch for bug-fixes, minor for new features, major for breaking changes.
+- **CHANGELOG.md** must be updated in the same commit as a version bump. Follow Keep-a-Changelog format.
+- **Labels in use**: `bug`, `enhancement`, `documentation`, `performance`, `technical-debt`, `security`. Always apply at least one label when filing an issue.
+- **`scripts/setup_github.py`** — run once per fresh repo clone with a `GH_TOKEN` env var to recreate all labels and seed the backlog issues.

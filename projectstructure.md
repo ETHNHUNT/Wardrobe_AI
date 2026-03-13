@@ -4,7 +4,7 @@
 > source files before making changes — read this first, then pinpoint the exact file.
 > All information is derived from actual source code, no assumptions.
 >
-> **Last updated:** 2026-03-12
+> **Last updated:** 2026-03-13
 >
 > **Maintenance rule:** This file MUST be updated in the same commit as any code change.
 > New file → Section 0. New endpoint → Sections 2 & 5. New model field → Section 3.
@@ -17,11 +17,26 @@
 ### Root
 | File | Purpose |
 |------|---------|
-| `CLAUDE.md` | Project instructions, tech stack, rules |
+| `CLAUDE.md` | Project instructions, tech stack, rules (incl. issue-tracking rules) |
 | `README.md` | Project overview, quick start, API reference, data models |
+| `CHANGELOG.md` | Keep-a-Changelog formatted history; bump with every version release |
+| `VERSION` | Current semver string (1.0.0); single source of truth for version |
+| `HANDOFF.md` | Project handoff: backlog issues, next steps, dev workflow |
 | `test_ollama_tagging.py` | Standalone test: creates synthetic image, calls AI tag endpoint |
-| `.plan.md` | Historical: Spline 3D integration strategy |
 | `WardrobeAI PRD.docx` | Product requirements document (binary) |
+
+### .github
+| File | Purpose |
+|------|---------|
+| `.github/ISSUE_TEMPLATE/bug_report.yml` | Structured bug-report form (area, priority, steps) |
+| `.github/ISSUE_TEMPLATE/feature_request.yml` | Structured feature-request form |
+| `.github/ISSUE_TEMPLATE/config.yml` | Disables blank issues; links to README |
+| `.github/pull_request_template.md` | PR checklist: type, test plan, screenshots, projectstructure.md tick |
+
+### Scripts
+| File | Purpose |
+|------|---------|
+| `scripts/setup_github.py` | One-shot bootstrap: creates 6 labels + seeds 12 backlog issues via GitHub API |
 
 ### Backend
 | File | Purpose |
