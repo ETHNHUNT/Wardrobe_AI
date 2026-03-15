@@ -30,18 +30,27 @@ async def lifespan(app: FastAPI):
     run_migrations()   # Safe on every restart; adds new columns without dropping data
 
     # Ollama health check — warning only, non-AI endpoints still work if Ollama is down
+    ollama_ok = False
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
             resp = await client.get("http://localhost:11434/api/tags")
             if resp.status_code == 200:
                 logger.info("Ollama is running and reachable ✓")
+                ollama_ok = True
             else:
                 logger.warning("Ollama responded with status %s — AI features may be unavailable", resp.status_code)
     except Exception:
         logger.warning(
             "Ollama is not reachable at http://localhost:11434 — "
-            "AI tagging and outfit generation will be unavailable until Ollama is started."
+            "AI tagging and outfit generation will fall back to Gemini or be unavailable."
         )
+
+    # Gemini fallback status
+    from services.ai_service import gemini_available
+    if gemini_available():
+        logger.info("Gemini fallback is configured and ready ✓")
+    elif not ollama_ok:
+        logger.warning("No AI backend available — set GEMINI_API_KEY or start Ollama for AI features.")
 
     yield
 

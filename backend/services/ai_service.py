@@ -1,14 +1,25 @@
 import re
 import json
 import base64
+import os
 
 import httpx
 
+# ── Ollama config ──────────────────────────────────────────────────────────────
 OLLAMA_URL = "http://localhost:11434/api/chat"
 MODEL = "qwen3.5:2b"
-# Gemini fallback not yet implemented.
-# When needed: GEMINI_MODEL = "gemini-2.5-flash-lite", GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
+# ── Gemini fallback config (REST API via httpx — no extra dependencies) ────────
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = "gemini-3.1-flash-lite-preview"
+_GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
+
+
+def gemini_available() -> bool:
+    return bool(GEMINI_API_KEY)
+
+
+# ── Prompts ────────────────────────────────────────────────────────────────────
 TAGGING_PROMPT = """You are a fashion assistant. Analyze this clothing item photo and return ONLY valid JSON with no markdown, no explanation.
 
 {
@@ -20,54 +31,6 @@ TAGGING_PROMPT = """You are a fashion assistant. Analyze this clothing item phot
   "seasons": ["one or more of: spring, summer, fall, winter"],
   "material": "fabric composition if visible on label or clearly inferrable (e.g. 100% cotton, polyester blend). Use null if completely unknown."
 }"""
-
-
-def parse_ai_json(raw: str) -> dict:
-    """Strip think tags and markdown fences, then parse JSON. Returns {} on failure."""
-    raw = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
-    raw = re.sub(r"```(?:json)?|```", "", raw).strip()
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        return {}
-
-
-async def tag_clothing_image(image_path: str) -> dict:
-    """
-    Call Ollama qwen3.5:2b to tag a clothing image.
-    Returns parsed dict on success, empty dict on any failure.
-    Caller should show manual tag form when empty dict is returned.
-    """
-    try:
-        with open(image_path, "rb") as f:
-            image_data = base64.b64encode(f.read()).decode()
-
-        payload = {
-            "model": MODEL,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": TAGGING_PROMPT,
-                    "images": [image_data],
-                }
-            ],
-            "stream": False,
-            "options": {"temperature": 0.1},
-        }
-
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            resp = await client.post(OLLAMA_URL, json=payload)
-
-        raw = resp.json()["message"]["content"]
-        return parse_ai_json(raw)
-
-    except httpx.ConnectError:
-        # Ollama is not running — caller shows manual form
-        return {}
-    except Exception:
-        # Malformed response, timeout, or any other error
-        return {}
-
 
 _GARMENT_MEASUREMENT_PROMPT = """You are a garment sizing expert. Look at this clothing item photo.
 Estimate typical garment measurements for this specific item based on what's visible (size tag, proportions, style).
@@ -88,43 +51,156 @@ Return format:
 }
 Only include fields relevant to the category. Omit fields that are clearly not applicable."""
 
+# ── JSON helpers ───────────────────────────────────────────────────────────────
+
+def parse_ai_json(raw: str) -> dict:
+    """Strip think tags and markdown fences, then parse JSON. Returns {} on failure."""
+    raw = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
+    raw = re.sub(r"```(?:json)?|```", "", raw).strip()
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+
+
+# ── Gemini REST helpers ────────────────────────────────────────────────────────
+
+def _gemini_image_part(image_path: str) -> dict:
+    """Build a Gemini inline_data part from a local image file."""
+    with open(image_path, "rb") as f:
+        data = base64.b64encode(f.read()).decode()
+    # Detect mime type from extension
+    ext = image_path.rsplit(".", 1)[-1].lower()
+    mime = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp"}.get(ext, "image/jpeg")
+    return {"inline_data": {"mime_type": mime, "data": data}}
+
+
+async def _gemini_vision(image_path: str, prompt: str) -> str:
+    """Call Gemini REST API with an image + text prompt. Returns raw text or ''."""
+    url = f"{_GEMINI_BASE}/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
+    payload = {
+        "contents": [{
+            "parts": [
+                {"text": prompt},
+                _gemini_image_part(image_path),
+            ]
+        }],
+        "generationConfig": {"temperature": 0.1},
+    }
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        resp = await client.post(url, json=payload)
+    data = resp.json()
+    try:
+        return data["candidates"][0]["content"]["parts"][0]["text"]
+    except (KeyError, IndexError):
+        return ""
+
+
+async def _gemini_text(prompt: str, temperature: float = 0.1) -> str:
+    """Call Gemini REST API with a text-only prompt. Returns raw text or ''."""
+    url = f"{_GEMINI_BASE}/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": temperature},
+    }
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        resp = await client.post(url, json=payload)
+    data = resp.json()
+    try:
+        return data["candidates"][0]["content"]["parts"][0]["text"]
+    except (KeyError, IndexError):
+        return ""
+
+
+# ── Ollama helpers ─────────────────────────────────────────────────────────────
+
+async def _ollama_vision(image_path: str, prompt: str, temperature: float = 0.1) -> str:
+    """Call Ollama vision. Returns raw text or raises on failure."""
+    with open(image_path, "rb") as f:
+        image_data = base64.b64encode(f.read()).decode()
+    payload = {
+        "model": MODEL,
+        "messages": [{"role": "user", "content": prompt, "images": [image_data]}],
+        "stream": False,
+        "options": {"temperature": temperature},
+    }
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        resp = await client.post(OLLAMA_URL, json=payload)
+    return resp.json()["message"]["content"]
+
+
+async def _ollama_text(prompt: str, temperature: float = 0.1) -> str:
+    """Call Ollama text. Returns raw text or raises on failure."""
+    payload = {
+        "model": MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "stream": False,
+        "options": {"temperature": temperature},
+    }
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        resp = await client.post(OLLAMA_URL, json=payload)
+    return resp.json()["message"]["content"]
+
+
+# ── Public AI functions ────────────────────────────────────────────────────────
+
+async def tag_clothing_image(image_path: str) -> dict:
+    """
+    Tag a clothing image via Ollama (primary) or Gemini (fallback).
+    Returns parsed dict on success, empty dict on total failure.
+    Caller shows manual tag form when empty dict is returned.
+    """
+    # Try Ollama first
+    try:
+        raw = await _ollama_vision(image_path, TAGGING_PROMPT, temperature=0.1)
+        result = parse_ai_json(raw)
+        if result:
+            return result
+    except Exception:
+        pass
+
+    # Gemini fallback
+    if gemini_available():
+        try:
+            raw = await _gemini_vision(image_path, TAGGING_PROMPT)
+            result = parse_ai_json(raw)
+            if result:
+                return result
+        except Exception:
+            pass
+
+    return {}
+
 
 async def infer_garment_measurements(image_path: str, category: str) -> dict:
     """
-    Call Ollama vision to estimate garment dimensions from a photo.
-    Returns dict with non-null measurement fields, or {} on failure/uncertainty.
+    Estimate garment dimensions from a photo via Ollama or Gemini fallback.
+    Returns dict with non-null numeric measurement fields, or {} on failure.
     Never blocks upload — always called after item is already saved.
     """
+    prompt = f"Category: {category}\n\n{_GARMENT_MEASUREMENT_PROMPT}"
+
+    raw = ""
+    # Try Ollama first
     try:
-        with open(image_path, "rb") as f:
-            image_data = base64.b64encode(f.read()).decode()
-
-        prompt = f"Category: {category}\n\n{_GARMENT_MEASUREMENT_PROMPT}"
-        payload = {
-            "model": MODEL,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt,
-                    "images": [image_data],
-                }
-            ],
-            "stream": False,
-            "options": {"temperature": 0.2},
-        }
-
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            resp = await client.post(OLLAMA_URL, json=payload)
-
-        raw = resp.json()["message"]["content"]
-        result = parse_ai_json(raw)
-        if not isinstance(result, dict):
-            return {}
-        # Keep only numeric (non-null) measurements
-        return {k: v for k, v in result.items() if isinstance(v, (int, float))}
-
+        raw = await _ollama_vision(image_path, prompt, temperature=0.2)
     except Exception:
+        pass
+
+    # Gemini fallback
+    if not raw and gemini_available():
+        try:
+            raw = await _gemini_vision(image_path, prompt)
+        except Exception:
+            pass
+
+    if not raw:
         return {}
+
+    result = parse_ai_json(raw)
+    if not isinstance(result, dict):
+        return {}
+    return {k: v for k, v in result.items() if isinstance(v, (int, float))}
 
 
 _OUTFIT_FIELDS = {"id", "category", "colors", "occasions", "seasons", "fit_type"}
@@ -143,10 +219,8 @@ async def generate_outfits(
     past_outfits: list[dict] | None = None,
 ) -> list[dict]:
     """
-    Call Ollama to generate 3 outfit suggestions.
-    Returns a list of {"items": [...], "reason": "..."} dicts.
-    Returns [] on any failure (Ollama down, malformed JSON, etc).
-    Iteration 6: accepts past_outfits as preference context.
+    Generate 3 outfit suggestions via Ollama (primary) or Gemini (fallback).
+    Returns list of {"items": [...], "reason": "..."} dicts, or [] on failure.
     """
     past_context = ""
     if past_outfits:
@@ -165,28 +239,32 @@ Return ONLY JSON array:
   {{"items": [1, 4, 6], "reason": "brief note"}}
 ]"""
 
-    payload = {
-        "model": MODEL,
-        "messages": [{"role": "user", "content": prompt}],
-        "stream": False,
-        "options": {"temperature": 0.3},
-    }
-
+    raw = ""
+    # Try Ollama first
     try:
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            resp = await client.post(OLLAMA_URL, json=payload)
-        raw = resp.json()["message"]["content"]
-        result = parse_ai_json(raw)
-        return result if isinstance(result, list) else []
+        raw = await _ollama_text(prompt, temperature=0.3)
     except Exception:
+        pass
+
+    # Gemini fallback
+    if not raw and gemini_available():
+        try:
+            raw = await _gemini_text(prompt, temperature=0.3)
+        except Exception:
+            pass
+
+    if not raw:
         return []
+
+    result = parse_ai_json(raw)
+    return result if isinstance(result, list) else []
 
 
 async def analyze_gaps(items: list[dict]) -> dict:
     """
-    Call Ollama to analyze wardrobe gaps by occasion and season.
-    Returns {"gaps": [...], "coverage_score": {...}} on success.
-    Returns {"gaps": [], "coverage_score": {}} on any failure (Ollama down, malformed JSON, etc).
+    Analyze wardrobe gaps by occasion and season via Ollama or Gemini fallback.
+    Returns {"gaps": [...], "coverage_score": {...}} on success,
+    or {"gaps": [], "coverage_score": {}} on failure.
     """
     slimmed = _slim_items(items, keep=_GAPS_FIELDS)
     prompt = f"""Analyze this wardrobe for gaps by occasion and season.
@@ -201,20 +279,23 @@ Return ONLY JSON:
   "coverage_score": {{"casual": 8, "work": 4, "formal": 0, "sport": 2}}
 }}"""
 
-    payload = {
-        "model": MODEL,
-        "messages": [{"role": "user", "content": prompt}],
-        "stream": False,
-        "options": {"temperature": 0.1},
-    }
-
+    raw = ""
+    # Try Ollama first
     try:
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            resp = await client.post(OLLAMA_URL, json=payload)
-        raw = resp.json()["message"]["content"]
+        raw = await _ollama_text(prompt, temperature=0.1)
+    except Exception:
+        pass
+
+    # Gemini fallback
+    if not raw and gemini_available():
+        try:
+            raw = await _gemini_text(prompt, temperature=0.1)
+        except Exception:
+            pass
+
+    if raw:
         result = parse_ai_json(raw)
         if isinstance(result, dict) and "gaps" in result:
             return result
-        return {"gaps": [], "coverage_score": {}}
-    except Exception:
-        return {"gaps": [], "coverage_score": {}}
+
+    return {"gaps": [], "coverage_score": {}}
