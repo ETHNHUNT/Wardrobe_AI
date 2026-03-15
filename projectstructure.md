@@ -4,7 +4,7 @@
 > source files before making changes — read this first, then pinpoint the exact file.
 > All information is derived from actual source code, no assumptions.
 >
-> **Last updated:** 2026-03-13
+> **Last updated:** 2026-03-15
 >
 > **Maintenance rule:** This file MUST be updated in the same commit as any code change.
 > New file → Section 0. New endpoint → Sections 2 & 5. New model field → Section 3.
@@ -37,6 +37,7 @@
 | File | Purpose |
 |------|---------|
 | `scripts/setup_github.py` | One-shot bootstrap: creates 6 labels + seeds 12 backlog issues via GitHub API |
+| `scripts/verify.sh` | Full 4-loop verification (starts backend, runs all test suites, cleans up) |
 
 ### Backend
 | File | Purpose |
@@ -57,6 +58,8 @@
 | `backend/services/color_service.py` | Color grouping, palette analysis, compatibility scoring |
 | `backend/services/compatibility_service.py` | Item-vs-wardrobe compatibility scoring |
 | `backend/services/fit_service.py` | Garment measurements vs body measurements verdict |
+| `backend/test_api.py` | Baseline 62-test suite (no pytest); run: `python backend/test_api.py` |
+| `backend/test_adversarial.py` | Adversarial 139-test suite (edge cases); run: `python backend/test_adversarial.py` |
 
 ### Frontend
 | File | Purpose |
