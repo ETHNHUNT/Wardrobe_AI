@@ -23,4 +23,5 @@ frontend/dist/
 Thumbs.db
 
 # Environment
+.env
 .env.local

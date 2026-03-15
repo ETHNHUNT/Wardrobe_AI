@@ -6,12 +6,12 @@ Run with: python test_api.py
 
 Prerequisites:
     - Backend running: uvicorn main:app --host 0.0.0.0 --port 8000
-    - Ollama optional — AI-dependent tests are skipped if Ollama is unreachable
+    - AI optional — tests run if Ollama is reachable OR GEMINI_API_KEY is set; skipped if neither
 
 Test coverage:
     - Profile: GET, POST
     - Items: POST (upload), GET list, GET single, PUT update, DELETE, POST worn, POST tag, GET fit-check
-    - Items special: GET barcode (format validation, not-found), POST scan-label (skipped without Ollama)
+    - Items special: GET barcode (format validation, not-found), POST scan-label (skipped without AI)
     - Outfits: POST generate (skipped without items), GET list, POST save, PUT update, DELETE
     - Outfits special: POST worn, GET history, rating validation
     - Shop: GET gaps, GET suggest, GET palette
@@ -96,6 +96,10 @@ def check_ollama():
         return r.status_code == 200
     except Exception:
         return False
+
+
+def check_gemini():
+    return bool(os.environ.get("GEMINI_API_KEY", ""))
 
 
 # ── Test Sections ──────────────────────────────────────────────────────────────
@@ -249,8 +253,8 @@ def test_outfits(client: httpx.Client, item_id: int | None, ollama_available: bo
         if r.status_code == 200:
             data = r.json()
             check("generate returns suggestions key", "suggestions" in data)
-    elif not ollama_available:
-        skip("POST /outfits/generate", "Ollama not running")
+    elif not ai_available:
+        skip("POST /outfits/generate", "no AI backend available")
     else:
         skip("POST /outfits/generate", "no items in wardrobe")
 
@@ -404,10 +408,15 @@ def main():
     print(f"\n{PASS} Backend is reachable")
 
     ollama_available = check_ollama()
+    gemini_available = check_gemini()
+    ai_available = ollama_available or gemini_available
+
     if ollama_available:
-        print(f"{PASS} Ollama is reachable — AI tests will run")
+        print(f"{PASS} Ollama is reachable — AI tests will run via Ollama")
+    elif gemini_available:
+        print(f"{PASS} Gemini API key detected — AI tests will run via Gemini fallback")
     else:
-        print(f"{SKIP} Ollama is not reachable — AI-dependent tests will be skipped")
+        print(f"{SKIP} No AI backend available (Ollama down, no GEMINI_API_KEY) — AI tests will be skipped")
 
     with httpx.Client(base_url=BASE_URL, timeout=30) as client:
         item_id = None
@@ -417,8 +426,8 @@ def main():
             test_profile(client)
             test_items_upload_size(client)
             test_items_barcode(client)
-            item_id = test_items(client, ollama_available)
-            outfit_id = test_outfits(client, item_id, ollama_available)
+            item_id = test_items(client, ai_available)
+            outfit_id = test_outfits(client, item_id, ai_available)
             test_outfits_cascade(client, item_id, outfit_id)
             test_shop(client)
         except Exception:
