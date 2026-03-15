@@ -57,6 +57,8 @@ app.add_middleware(
 
 # Serve clothing photos at /images/{filename}
 # e.g. http://192.168.1.105:8000/images/1_1709900000.jpg
+# CRITICAL: StaticFiles mounts at import time (before lifespan), so ensure directory exists now.
+os.makedirs("data/images", exist_ok=True)
 app.mount("/images", StaticFiles(directory="data/images"), name="images")
 
 app.include_router(profile.router)

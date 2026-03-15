@@ -48,8 +48,12 @@ wardrobeai/
 ├── CLAUDE.md
 ├── .plan.md                             # Spline 3D integration plan (historical)
 ├── test_ollama_tagging.py               # Standalone Ollama tagging test script
+├── scripts/
+│   └── verify.sh                        # Full 4-loop verification (starts backend, runs all tests, cleans up)
 ├── backend/
 │   ├── main.py                          # FastAPI app entry point
+│   ├── test_api.py                      # Baseline API test suite (62 tests, no pytest required)
+│   ├── test_adversarial.py              # Adversarial edge-case suite (139 tests, no pytest required)
 │   ├── database.py                      # SQLite + SQLModel setup
 │   ├── wardrobe.db                      # SQLite DB (auto-created on first run)
 │   ├── models/
@@ -60,7 +64,7 @@ wardrobeai/
 │   │   ├── profile.py                   # GET/POST /profile
 │   │   ├── items.py                     # CRUD /items + worn tracking + barcode + retag
 │   │   ├── outfits.py                   # GET/POST /outfits + AI generation
-│   │   └── shop.py                      # GET /shop/gaps, /shop/suggest (with 30s cache)
+│   │   └── shop.py                      # GET /shop/gaps, /shop/suggest (with 300s cache)
 │   ├── services/
 │   │   ├── ai_service.py                # Ollama calls (vision + text)
 │   │   ├── barcode_service.py           # UPC lookup via UPCItemDB (legacy, wrapped by product_lookup_service)
@@ -485,6 +489,14 @@ All 4 build phases are complete. This section records what was built.
 - ErrorBoundary component protecting all pages
 - NoiseOverlay grain texture for depth
 
+### Phase 5 — Automated Verification ✅ (2026-03-15)
+
+- `backend/test_api.py` — 62-test baseline suite covering all 22 endpoints
+- `backend/test_adversarial.py` — 139-test adversarial suite: filtering accuracy, cascade correctness, JSON round-trips, race resistance, protected fields, history ordering
+- `scripts/verify.sh` — orchestrates 4 loops: baseline → adversarial → combined re-run → stress battery (10 items)
+- **Bug found and fixed**: `StaticFiles` mount in `main.py` ran before `data/images/` was created → added `os.makedirs` before `app.mount()`
+- All 243 tests pass without Ollama (AI tests gracefully skipped)
+
 ### Backlog (Not Yet Implemented)
 
 - Gemini 2.5 Flash-Lite fallback — referenced in config but no actual code path exists
@@ -511,6 +523,8 @@ All 4 build phases are complete. This section records what was built.
 - **Barcode lookup requires valid UPC-12 or EAN-13** — 12 or 13 digits only; returns 400 on invalid format
 - **`projectstructure.md` must be kept in sync**: After ANY code change — new file, new endpoint, new model field, component added/removed, logic change — update `projectstructure.md` in the same commit. Never leave it stale.
 - **After every correction, update CLAUDE.md** — ruthlessly. Keep iterating until mistake rate measurably drops.
+- **BUG FIXED (v1.1.1): `StaticFiles` mount race on fresh install** — `app.mount("/images", StaticFiles(...))` runs at module import time, BEFORE `lifespan()` creates `data/images/`. Fix: add `os.makedirs("data/images", exist_ok=True)` immediately before `app.mount()` in `main.py`. Without this, `uvicorn` crashes with `RuntimeError: Directory 'data/images' does not exist` on any fresh install where the directory hasn't been pre-created.
+- **Automated verification**: `backend/test_api.py` (62 tests) + `backend/test_adversarial.py` (139 tests) + Loop 4 stress battery (42 tests). All pass without Ollama (AI tests gracefully skipped). Run: `bash scripts/verify.sh` — starts backend automatically, clears DB, runs all 4 loops, cleans up.
 
 -----
 
