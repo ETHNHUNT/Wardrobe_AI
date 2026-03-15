@@ -7,7 +7,7 @@ import BarcodeScanner from '../components/BarcodeScanner'
 import SplineScene from '../components/SplineScene'
 import LuxSelect from '../components/LuxSelect'
 import PhaseIndicator from '../components/PhaseIndicator'
-import { parseJson } from '../lib/utils'
+import { parseJson, parseColorString } from '../lib/utils'
 import { SCENES } from '../lib/scenes'
 import { CATEGORIES, FIT_TYPES, OCCASIONS, SEASONS, INPUT_STYLE, toggleArr } from '../lib/constants'
 
@@ -224,7 +224,7 @@ export default function AddItem() {
         size_label: manualForm.size_label || null,
         notes:      manualForm.notes      || null,
         material:   manualForm.material   || null,
-        colors:     manualForm.colors ? manualForm.colors.split(',').map((s) => s.trim()).filter(Boolean) : [],
+        colors:     parseColorString(manualForm.colors),
         occasions:  manualForm.occasions,
         seasons:    manualForm.seasons,
         ...(Object.keys(gm).length > 0 && { garment_measurements: gm }),

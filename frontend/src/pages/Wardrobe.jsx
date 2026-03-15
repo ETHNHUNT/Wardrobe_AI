@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import axios from 'axios'
 import { gsap } from 'gsap'
 import { Shirt, Grid3X3, Palette } from 'lucide-react'
@@ -6,6 +6,7 @@ import ItemCard from '../components/ItemCard'
 import ItemDetailModal from '../components/ItemDetailModal'
 import SplineScene from '../components/SplineScene'
 import TextShimmer from '../components/TextShimmer'
+import { useToast } from '../components/Toast'
 import { SCENES } from '../lib/scenes'
 import { getColorCSS } from '../lib/colors'
 import { CATEGORIES as BASE_CATEGORIES, OCCASIONS as BASE_OCCASIONS, SEASONS as BASE_SEASONS } from '../lib/constants'
@@ -99,6 +100,7 @@ export default function Wardrobe() {
   const [paletteLoading, setPaletteLoading] = useState(false)
   const gridRef    = useRef(null)
   const swatchRef  = useRef(null)
+  const { toast }  = useToast()
 
   useEffect(() => {
     const controller = new AbortController()
@@ -116,7 +118,8 @@ export default function Wardrobe() {
       const { data } = await axios.get(`${API_URL}/shop/palette`)
       setPaletteData(data)
     } catch (err) {
-      console.error('Failed to fetch palette:', err)
+      console.error('[DEBUG] Failed to fetch palette:', err)
+      toast({ message: 'Could not load palette — check backend connection.', type: 'error', duration: 4000 })
     } finally {
       setPaletteLoading(false)
     }
@@ -132,7 +135,10 @@ export default function Wardrobe() {
       const { data } = await axios.get(`${API_URL}/items`, { params, signal })
       setItems(data)
     } catch (err) {
-      if (!axios.isCancel(err)) console.error('Failed to fetch items:', err)
+      if (!axios.isCancel(err)) {
+        console.error('[DEBUG] Failed to fetch items:', err)
+        toast({ message: 'Could not load wardrobe — check backend connection.', type: 'error', duration: 4000 })
+      }
     } finally {
       setLoading(false)
     }
@@ -165,6 +171,16 @@ export default function Wardrobe() {
       }
     }
   }, [paletteLoading, paletteData])
+
+  // Memoize palette color CSS lookups — getColorCSS is pure and only changes with paletteData
+  const allColorsMemo = useMemo(
+    () => (paletteData?.all_colors ?? []).map((color) => ({ color, css: getColorCSS(color) })),
+    [paletteData]
+  )
+  const complementaryMemo = useMemo(
+    () => (paletteData?.complementary_suggestions ?? []).map((color) => ({ color, css: getColorCSS(color) })),
+    [paletteData]
+  )
 
   function handleFilter(key, value) {
     setFilters((prev) => ({ ...prev, [key]: value }))
@@ -390,14 +406,14 @@ export default function Wardrobe() {
                   Your Colors
                 </p>
                 <div ref={swatchRef} className="flex flex-wrap gap-2">
-                  {(paletteData.all_colors ?? []).map((color) => (
+                  {allColorsMemo.map(({ color, css }) => (
                     <div key={color} className="palette-swatch flex flex-col items-center gap-1">
                       <div
                         className="w-9 h-9 rounded-full"
                         style={{
-                          backgroundColor: getColorCSS(color),
+                          backgroundColor: css,
                           border: '2px solid rgba(255,255,255,0.1)',
-                          boxShadow: `0 2px 8px ${getColorCSS(color)}55`,
+                          boxShadow: `0 2px 8px ${css}55`,
                         }}
                       />
                       <span className="text-[9px] capitalize text-center max-w-[44px] leading-tight"
@@ -413,7 +429,7 @@ export default function Wardrobe() {
               <div style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)' }} />
 
               {/* ── Complementary suggestions ── */}
-              {(paletteData.complementary_suggestions?.length ?? 0) > 0 && (
+              {complementaryMemo.length > 0 && (
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] mb-1" style={{ color: 'var(--accent)' }}>
                     What to Add
@@ -422,14 +438,14 @@ export default function Wardrobe() {
                     Colors that would complement your wardrobe
                   </p>
                   <div className="flex flex-wrap gap-3">
-                    {paletteData.complementary_suggestions.map((color) => (
+                    {complementaryMemo.map(({ color, css }) => (
                       <div key={color} className="flex flex-col items-center gap-1.5">
                         <div
                           className="w-10 h-10 rounded-full flex items-center justify-center"
                           style={{
-                            backgroundColor: getColorCSS(color),
+                            backgroundColor: css,
                             border: '2px dashed rgba(200,169,126,0.4)',
-                            boxShadow: `0 4px 12px ${getColorCSS(color)}44`,
+                            boxShadow: `0 4px 12px ${css}44`,
                           }}
                         >
                           <span className="text-[8px] font-bold text-white/60">+</span>
