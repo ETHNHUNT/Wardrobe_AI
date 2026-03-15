@@ -26,6 +26,10 @@ export default function BarcodeScanner({ onScan, onClose }) {
 
     return () => {
       reader.reset()
+      // Stop MediaStream tracks so the camera indicator light turns off
+      if (videoRef.current?.srcObject) {
+        videoRef.current.srcObject.getTracks().forEach((t) => t.stop())
+      }
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 

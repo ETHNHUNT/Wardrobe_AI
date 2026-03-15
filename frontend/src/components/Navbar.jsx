@@ -26,7 +26,7 @@ export default function Navbar() {
     >
       <div
         className="flex justify-around items-center h-16"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}
       >
         {tabs.map(({ to, label, Icon }) => {
           const isActive =

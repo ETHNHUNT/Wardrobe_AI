@@ -5,7 +5,7 @@
 A personal, locally-hosted AI wardrobe manager. The user (Vipin) runs this on his Windows PC;
 his phone connects to it over the same WiFi. No cloud hosting. Zero ongoing cost. Not public. Single user only.
 
-**Current State: v1.0 — All 4 build phases complete and running.**
+**Current State: v1.1 — All 4 build phases complete + v1.1 bug-fix pass (cascading delete, upload limit, gap cache, UPC validation, error toasts, memoization).**
 
 -----
 
@@ -63,8 +63,12 @@ wardrobeai/
 │   │   └── shop.py                      # GET /shop/gaps, /shop/suggest (with 30s cache)
 │   ├── services/
 │   │   ├── ai_service.py                # Ollama calls (vision + text)
-│   │   ├── barcode_service.py           # UPC lookup via UPCItemDB
-│   │   └── shopping_service.py          # Gap analysis + size inference + Google Shopping URLs
+│   │   ├── barcode_service.py           # UPC lookup via UPCItemDB (legacy, wrapped by product_lookup_service)
+│   │   ├── shopping_service.py          # Gap analysis + size inference + Google Shopping URLs
+│   │   ├── color_service.py             # Instant palette analysis + complementary color suggestions (no AI)
+│   │   ├── fit_service.py               # Garment vs body measurement fit verification
+│   │   ├── compatibility_service.py     # Shopping suggestion compatibility scoring (0–1)
+│   │   └── product_lookup_service.py    # 4-source barcode lookup chain + label OCR
 │   ├── data/
 │   │   └── images/                      # Stored clothing photos: {id}_{uuid}.jpg
 │   └── requirements.txt
@@ -78,8 +82,10 @@ wardrobeai/
 │       ├── index.css                    # Tailwind + full luxury theme (CSS variables)
 │       ├── App.jsx                      # Router + splash + page transitions
 │       ├── lib/
-│       │   ├── utils.js                 # cn() class merger, parseJson() safe parser
-│       │   └── scenes.js                # Spline 3D scene URL constants
+│       │   ├── utils.js                 # cn() class merger, parseJson() safe parser, parseColorString()
+│       │   ├── scenes.js                # Spline 3D scene URL constants
+│       │   ├── constants.js             # Shared enums (CATEGORIES, OCCASIONS, SEASONS, FIT_TYPES), INPUT_STYLE, toggleArr(), isPhotoValid()
+│       │   └── colors.js                # COLOR_MAP + getColorCSS() — maps color names to CSS values
 │       ├── pages/
 │       │   ├── Wardrobe.jsx             # Grid view + filters + 3D hero + GSAP animations
 │       │   ├── AddItem.jsx              # 6-phase upload flow (idle/camera/preview/upload/form/done)
@@ -98,7 +104,10 @@ wardrobeai/
 │           ├── TextShimmer.jsx          # Gold shimmer sweep animation on headings
 │           ├── NoiseOverlay.jsx         # Grain texture overlay (pointer-events none)
 │           ├── GlassCard.jsx            # Reusable glassmorphism card container
-│           └── LuxSelect.jsx            # Native <select> styled with Tailwind + gold focus ring
+│           ├── LuxSelect.jsx            # Native <select> styled with Tailwind + gold focus ring
+│           ├── Toast.jsx                # Context-based toast notifications (max 4 on screen, auto-dismiss)
+│           ├── OutfitGallery.jsx        # THREE.js WebGL carousel with elastic drag + momentum
+│           └── PhaseIndicator.jsx       # Step progress bar for AddItem 6-phase upload flow
 └── README.md
 ```
 
@@ -141,6 +150,9 @@ class ClothingItem(SQLModel, table=True):
     date_added: datetime = Field(default_factory=datetime.utcnow)
     times_worn: int = 0                      # Incremented by POST /items/{id}/worn
     notes: str | None = None
+    # Added via migration (Iteration 1):
+    garment_measurements: str | None = None  # JSON: {"chest_width_cm": 54, "body_length_cm": 72, ...}
+    material: str | None = None              # e.g. "100% cotton" — from AI or label OCR
 ```
 
 ### SavedOutfit
@@ -151,8 +163,12 @@ class SavedOutfit(SQLModel, table=True):
     item_ids: str              # JSON array of ClothingItem IDs: [1, 3, 7]
     occasion: str | None = None
     season: str | None = None
-    rating: int | None = None  # 1-5 stars
+    rating: int | None = None  # 1-5 stars; validated 1–5 on POST and PUT
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    # Added via migration (Iteration 6):
+    worn_date: str | None = None             # ISO-8601 timestamp of last wear
+    times_worn: int = 0                      # Incremented by POST /outfits/{id}/worn
+    name: str | None = None                  # Optional user-defined outfit name
 ```
 
 -----
@@ -201,15 +217,16 @@ def _apply_tags(item, tags, *, preserve_existing=False):
 
 ### Gap Analysis Cache
 
-`/shop/gaps` and `/shop/suggest` share a 30-second in-memory cache to avoid a second
+`/shop/gaps` and `/shop/suggest` share a 300-second in-memory cache to avoid a second
 30–60s Ollama call when both are hit on the same page load:
 
 ```python
 _gaps_cache: dict = {"result": None, "item_count": -1, "ts": 0.0}
-_GAPS_CACHE_TTL = 30  # seconds
+_GAPS_CACHE_TTL = 300  # seconds (5 min — AI call takes 30–60s, cache must outlast it)
 ```
 
 Force-refresh via `GET /shop/gaps?force=true`.
+Deleting any ClothingItem calls `invalidate_gaps_cache()` automatically.
 
 ### Vision Tagging Prompt
 
@@ -277,22 +294,27 @@ GET    /profile
 POST   /profile
 
 GET    /items                          # ?category= &occasion= &season=
-POST   /items                          # multipart/form-data: photo file + optional metadata JSON string
+POST   /items                          # multipart/form-data: photo ≤15MB + optional metadata JSON string
 GET    /items/{id}
 PUT    /items/{id}                      # Partial update (id, photo_path, date_added are protected)
-DELETE /items/{id}                      # Deletes DB row + image file from disk
+DELETE /items/{id}                      # Deletes DB row + image file + cascades to remove ID from all SavedOutfit.item_ids
 POST   /items/{id}/worn                 # Increment times_worn counter — returns {id, times_worn}
 POST   /items/{id}/tag                  # Re-run AI tagging (preserve_existing=True)
-GET    /items/barcode/{upc}             # UPCItemDB lookup — returns pre-fill data
+GET    /items/{id}/fit-check            # Verify garment_measurements vs user body (fit_service)
+GET    /items/barcode/{upc}             # 4-source barcode lookup — validates UPC-12/EAN-13 format, returns pre-fill data
+POST   /items/scan-label               # OCR clothing label photo via Ollama vision — returns pre-fill data
 
-GET    /outfits                         # ?occasion= &season=
+GET    /outfits                         # ?occasion= &season= — includes missing_items field for deleted-item refs
 POST   /outfits/generate                # body: {"occasion": "work", "season": "winter"}
-POST   /outfits
-PUT    /outfits/{id}                    # e.g. update rating
+POST   /outfits                         # rating validated 1–5 if provided
+PUT    /outfits/{id}                    # update rating (1–5) or name
 DELETE /outfits/{id}
+POST   /outfits/{id}/worn               # Increment outfit times_worn + worn_date + all item times_worn
+GET    /outfits/history                 # Worn outfits sorted by worn_date DESC
 
-GET    /shop/gaps                       # ?force=true to bypass 30s cache
+GET    /shop/gaps                       # ?force=true to bypass 300s cache
 GET    /shop/suggest                    # ?brand=zara&budget_cad=100
+GET    /shop/palette                    # Instant color palette analysis (no AI) — by_group, all_colors, complementary_suggestions
 ```
 
 -----
@@ -354,7 +376,10 @@ border: 1px solid rgba(200,169,126,0.12);
 - If AI tagging returns empty dict: show manual tag form with dropdowns, never crash.
 - Use `cn()` from `lib/utils.js` for all conditional class merging.
 - Use native `<select>` elements (via `LuxSelect`) for all dropdowns — best iOS/Android UX.
-- Respect safe area insets: `env(safe-area-inset-bottom)` on bottom-nav padding.
+- Respect safe area insets: `max(env(safe-area-inset-bottom), 0px)` on bottom-nav padding (use `max()` wrapper for older WebKit compat).
+- `parseJson()` fallback rule: array fields (colors, tags, occasions, seasons) use `[]`; object fields (garment_measurements, brand_sizes) use `{}` as explicit second argument.
+- `parseColorString(str)` from `lib/utils.js` — parse comma-separated color strings in edit forms. Never duplicate inline.
+- `INPUT_STYLE` in `lib/constants.js` is the base input style. Profile.jsx has a local extension with `transition` — this is intentional and documented.
 
 -----
 
@@ -441,9 +466,11 @@ All 4 build phases are complete. This section records what was built.
 
 - Wardrobe gap analysis engine (`analyze_gaps` via Ollama)
 - Instant local coverage scoring (`compute_local_coverage` — no AI, no delay)
-- 30s gap analysis cache to avoid double Ollama calls
+- 300s gap analysis cache to avoid double Ollama calls (increased from 30s in v1.1)
 - Shopping page: coverage rings + gap cards + suggestion cards with Google Shopping links
 - Size inference engine: brand preference → body measurements → category fallback
+- Color palette analysis via `color_service.py` — `GET /shop/palette` (instant, no AI)
+- Complementary color suggestions + underrepresented group detection
 
 ### Phase 4 — Polish ✅
 
@@ -461,9 +488,8 @@ All 4 build phases are complete. This section records what was built.
 ### Backlog (Not Yet Implemented)
 
 - Gemini 2.5 Flash-Lite fallback — referenced in config but no actual code path exists
-- Color palette gap detection (planned in PRD Phase 3)
-- Versatility score per shopping suggestion ("this chino matches 7 of your tops")
-- Dedicated outfit history view
+- Versatility score per shopping suggestion ("this chino matches 7 of your tops") — compatibility_service exists but full UI not wired
+- Pagination on `/items` and `/outfits` list endpoints (currently return all rows)
 
 -----
 
@@ -479,7 +505,12 @@ All 4 build phases are complete. This section records what was built.
 - Handle Ollama connection error: `httpx.ConnectError` if Ollama is not running
 - VRAM: do not run GPU-intensive apps while using wardrobe AI (GTX 1050Ti 4GB is shared)
 - `preserve_existing=True` on retag: AI result never clobbers manually edited fields
+- **Ollama health checked at startup** in `lifespan()` — failure is a WARNING only (non-AI endpoints still work)
+- **Photo uploads capped at 15 MB** — enforced in `POST /items` after `await photo.read()`; returns 413 if exceeded
+- **Deleting a ClothingItem cascades** to remove its ID from all `SavedOutfit.item_ids`; empty outfits are deleted entirely
+- **Barcode lookup requires valid UPC-12 or EAN-13** — 12 or 13 digits only; returns 400 on invalid format
 - **`projectstructure.md` must be kept in sync**: After ANY code change — new file, new endpoint, new model field, component added/removed, logic change — update `projectstructure.md` in the same commit. Never leave it stale.
+- **After every correction, update CLAUDE.md** — ruthlessly. Keep iterating until mistake rate measurably drops.
 
 -----
 

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Trash2, Tag, Pencil, CheckCircle2, Ruler } from 'lucide-react'
 import axios from 'axios'
 import LuxSelect from './LuxSelect'
-import { parseJson } from '../lib/utils'
+import { parseJson, parseColorString } from '../lib/utils'
 import { getColorCSS } from '../lib/colors'
 import { CATEGORIES, FIT_TYPES, OCCASIONS, SEASONS, INPUT_STYLE, toggleArr, isPhotoValid } from '../lib/constants'
 import { useToast } from './Toast'
@@ -59,7 +59,7 @@ export default function ItemDetailModal({ item, onClose, onDeleted, onUpdated })
         size_label: form.size_label || null,
         notes:      form.notes || null,
         material:   form.material || null,
-        colors:     form.colors ? form.colors.split(',').map((s) => s.trim()).filter(Boolean) : [],
+        colors:     parseColorString(form.colors),
         occasions:  form.occasions,
         seasons:    form.seasons,
         ...(Object.keys(gm).length > 0 && { garment_measurements: gm }),

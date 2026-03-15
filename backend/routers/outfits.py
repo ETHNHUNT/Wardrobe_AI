@@ -121,10 +121,12 @@ def list_outfits(
     for outfit in outfits:
         item_ids = _parse_ids(outfit.item_ids)
         items = [item_map[iid] for iid in item_ids if iid in item_map]
+        missing_ids = [iid for iid in item_ids if iid not in item_map]
         result.append(
             {
                 **outfit.model_dump(),
                 "items": [i.model_dump() for i in items],
+                "missing_items": missing_ids,  # IDs that were deleted from wardrobe
             }
         )
     return result
@@ -132,6 +134,8 @@ def list_outfits(
 
 @router.post("/outfits")
 def save_outfit(req: SaveOutfitRequest, session: Session = Depends(get_session)):
+    if req.rating is not None and not (1 <= req.rating <= 5):
+        raise HTTPException(status_code=422, detail="Rating must be between 1 and 5")
     outfit = SavedOutfit(
         item_ids=json.dumps(req.item_ids),
         occasion=req.occasion,

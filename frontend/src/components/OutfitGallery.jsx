@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { gsap } from 'gsap'
+import { Trash2, CheckCircle2 } from 'lucide-react'
 import { cn } from '../lib/utils'
 
 const API_URL = import.meta.env.VITE_API_URL
@@ -73,7 +74,7 @@ function makePlane(x) {
   return { mesh, mat, uniforms_proxy: { progress: 0 } }
 }
 
-export default function OutfitGallery({ outfits }) {
+export default function OutfitGallery({ outfits, onRate, onDelete, onMarkWorn }) {
   const containerRef = useRef(null)
   const stateRef     = useRef(null)
   const [activeIndex, setActiveIndex] = useState(0)
@@ -301,7 +302,7 @@ export default function OutfitGallery({ outfits }) {
         onMouseLeave={(e) => e.currentTarget.style.cursor = 'grab'}
       />
 
-      {/* Metadata overlay */}
+      {/* Metadata overlay — outer is pointer-events-none; interactive children opt back in */}
       <div className="absolute bottom-4 left-0 right-0 text-center pointer-events-none">
         <p className="font-display text-[var(--accent)] tracking-widest uppercase text-sm">
           {current?.occasion ?? 'Saved Outfit'}
@@ -309,11 +310,42 @@ export default function OutfitGallery({ outfits }) {
         <p className="text-[var(--text-muted)] text-xs mt-1">
           {current?.season ?? ''}
         </p>
-        {current?.rating && (
-          <p className="text-[var(--accent)] text-xs mt-1">
-            {'★'.repeat(current.rating)}{'☆'.repeat(5 - current.rating)}
-          </p>
-        )}
+
+        {/* Interactive star rating */}
+        <div className="flex justify-center gap-1 mt-2 pointer-events-auto">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button
+              key={star}
+              onClick={() => onRate?.(current?.id, star)}
+              className="text-base transition-transform active:scale-125 px-0.5"
+              style={{ color: star <= (current?.rating ?? 0) ? 'var(--accent)' : 'rgba(255,255,255,0.2)' }}
+            >
+              ★
+            </button>
+          ))}
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex justify-center gap-3 mt-2 pointer-events-auto">
+          <button
+            onClick={() => onMarkWorn?.(current?.id)}
+            className="flex items-center gap-1.5 text-[10px] px-3 py-1.5 rounded-full active:opacity-70"
+            style={{ backgroundColor: 'rgba(74,222,128,0.1)', color: '#4ADE80', border: '1px solid rgba(74,222,128,0.2)' }}
+          >
+            <CheckCircle2 size={11} strokeWidth={2} />
+            Mark Worn
+          </button>
+          <button
+            onClick={() => onDelete?.(current?.id)}
+            className="flex items-center gap-1.5 text-[10px] px-3 py-1.5 rounded-full active:opacity-70"
+            style={{ backgroundColor: 'rgba(248,113,113,0.1)', color: '#F87171', border: '1px solid rgba(248,113,113,0.2)' }}
+          >
+            <Trash2 size={11} strokeWidth={2} />
+            Delete
+          </button>
+        </div>
+
+        {/* Slide dots */}
         <div className="flex justify-center gap-2 mt-3">
           {outfits.map((_, i) => (
             <div

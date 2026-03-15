@@ -1,12 +1,16 @@
+import logging
 import os
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 load_dotenv()
 
+import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+
+logger = logging.getLogger("wardrobeai")
 
 # CRITICAL: import all models before create_db_and_tables() so SQLModel
 # registers their tables with the metadata before create_all() is called.
@@ -24,6 +28,21 @@ async def lifespan(app: FastAPI):
     os.makedirs("data/images", exist_ok=True)
     create_db_and_tables()
     run_migrations()   # Safe on every restart; adds new columns without dropping data
+
+    # Ollama health check — warning only, non-AI endpoints still work if Ollama is down
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.get("http://localhost:11434/api/tags")
+            if resp.status_code == 200:
+                logger.info("Ollama is running and reachable ✓")
+            else:
+                logger.warning("Ollama responded with status %s — AI features may be unavailable", resp.status_code)
+    except Exception:
+        logger.warning(
+            "Ollama is not reachable at http://localhost:11434 — "
+            "AI tagging and outfit generation will be unavailable until Ollama is started."
+        )
+
     yield
 
 

@@ -15,7 +15,7 @@ router = APIRouter()
 # Simple in-memory cache for analyze_gaps — avoids a second 30-60s Ollama call
 # when /shop/gaps and /shop/suggest are both called on the same page load.
 _gaps_cache: dict = {"result": None, "item_count": -1, "ts": 0.0}
-_GAPS_CACHE_TTL = 30  # seconds
+_GAPS_CACHE_TTL = 300  # seconds (AI call takes 30–60s; cache for 5 min to avoid double-call)
 
 
 def invalidate_gaps_cache():

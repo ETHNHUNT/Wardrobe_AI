@@ -10,6 +10,7 @@ from sqlmodel import Session, select
 
 from database import get_session
 from models.item import ClothingItem
+from models.outfit import SavedOutfit
 from services.ai_service import tag_clothing_image, infer_garment_measurements
 from services.product_lookup_service import lookup_product, lookup_from_label_photo
 from services.color_service import extract_dominant_color_from_image
@@ -70,6 +71,12 @@ async def add_item(
 
     # Read and validate the uploaded image
     contents = await photo.read()
+
+    # Reject uploads larger than 15 MB (protect against accidental large uploads)
+    _MAX_UPLOAD_BYTES = 15 * 1024 * 1024  # 15 MB
+    if len(contents) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Image too large — maximum allowed size is 15 MB")
+
     try:
         img = Image.open(io.BytesIO(contents))
         img.verify()  # Validates image integrity; exhausts the PIL handle after this
@@ -182,6 +189,12 @@ async def lookup_barcode(upc: str):
     Look up a clothing item by UPC barcode.
     Iteration 2: tries UPCItemDB → Open GTIN DB → Barcode Lookup → GS1 prefix fallback.
     """
+    # Validate UPC format: must be 12 (UPC-A) or 13 (EAN-13) digits only
+    if not upc.isdigit() or len(upc) not in (12, 13):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid barcode — must be 12 or 13 digits (UPC-A or EAN-13)",
+        )
     result = await lookup_product(upc)
     if not result:
         raise HTTPException(status_code=404, detail="Product not found for this barcode")
@@ -269,6 +282,24 @@ def delete_item(item_id: int, session: Session = Depends(get_session)):
     (IMAGES_DIR / item.photo_path).unlink(missing_ok=True)
 
     session.delete(item)
+    session.flush()  # Flush deletion before cascade so item is gone from DB
+
+    # Cascading update: remove deleted item ID from all saved outfits
+    all_outfits = session.exec(select(SavedOutfit)).all()
+    for outfit in all_outfits:
+        try:
+            ids = json.loads(outfit.item_ids or "[]")
+        except json.JSONDecodeError:
+            ids = []
+        if item_id in ids:
+            ids.remove(item_id)
+            if not ids:
+                # Outfit now has zero items — delete it
+                session.delete(outfit)
+            else:
+                outfit.item_ids = json.dumps(ids)
+                session.add(outfit)
+
     session.commit()
     invalidate_gaps_cache()
     return {"ok": True}
