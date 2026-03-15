@@ -4,6 +4,7 @@ import { Sparkles, Sun, Clock, CheckCircle2 } from 'lucide-react'
 import { gsap } from 'gsap'
 import axios from 'axios'
 import OutfitCard from '../components/OutfitCard'
+import OutfitGallery from '../components/OutfitGallery'
 import { OCCASIONS, SEASONS } from '../lib/constants'
 
 const API_URL = import.meta.env.VITE_API_URL
@@ -311,84 +312,22 @@ export default function OutfitBuilder() {
 
         {/* ── Saved tab ── */}
         {tab === 'saved' && (
-          <motion.div key="saved" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.22 }}
-            className="px-5 space-y-4">
+          <motion.div key="saved" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.22 }}>
             {loadingSaved ? (
-              <div className="space-y-4">
+              <div className="space-y-4 px-5">
                 {[1, 2].map((i) => (
                   <div key={i} className="h-48 rounded-2xl shimmer" />
                 ))}
               </div>
-            ) : savedOutfits.length === 0 ? (
-              <div className="text-center py-20">
-                <Sparkles size={40} strokeWidth={1} style={{ color: 'var(--text-muted)', opacity: 0.3, margin: '0 auto 16px' }} />
-                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                  No saved outfits yet.<br />Generate some and tap Save.
+            ) : savedOutfits.length > 0 ? (
+              <OutfitGallery outfits={savedOutfits} />
+            ) : (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <p className="text-[var(--text-muted)] text-sm">No saved outfits yet</p>
+                <p className="text-[var(--text-muted)] text-xs mt-1">
+                  Generate outfits and save the ones you like
                 </p>
               </div>
-            ) : (
-              savedOutfits.map((o) => (
-                <div key={o.id} className="space-y-2">
-                  {/* Outfit name display */}
-                  {o.name && (
-                    <p className="text-xs font-medium px-1" style={{ color: 'var(--accent)' }}>
-                      {o.name}
-                    </p>
-                  )}
-                  <OutfitCard outfit={o} onRate={handleRate} onDelete={handleDelete} isSaved={true} />
-
-                  {/* Iteration 6: Worn tracking + naming below the card */}
-                  <div className="rounded-xl px-3 py-2.5 space-y-2.5"
-                    style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid rgba(255,255,255,0.04)' }}>
-                    {/* Worn stats */}
-                    <div className="flex items-center justify-between">
-                      <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                        Worn {o.times_worn ?? 0} time{(o.times_worn ?? 0) !== 1 ? 's' : ''}
-                        {o.worn_date && (
-                          <span> · {new Date(o.worn_date).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })}</span>
-                        )}
-                      </p>
-                      {/* Mark as Worn — whileTap scale (Framer Motion, existing pattern) */}
-                      <motion.button
-                        onClick={() => handleMarkWorn(o.id)}
-                        disabled={wornLoading === o.id}
-                        whileTap={{ scale: 0.92 }}
-                        className="flex items-center gap-1.5 text-[10px] font-medium px-3 py-1.5 rounded-xl disabled:opacity-50 transition-all"
-                        style={{ backgroundColor: 'var(--accent-soft)', color: 'var(--accent)', border: '1px solid rgba(200,169,126,0.2)' }}
-                      >
-                        {wornLoading === o.id ? (
-                          <span className="w-3 h-3 rounded-full border-2 border-t-transparent animate-spin"
-                            style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
-                        ) : (
-                          <CheckCircle2 size={11} strokeWidth={2} />
-                        )}
-                        Worn Today
-                      </motion.button>
-                    </div>
-
-                    {/* Name this look */}
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder={o.name ? `Rename: ${o.name}` : 'Name this look… (optional)'}
-                        value={nameInputs[o.id] ?? ''}
-                        onChange={(e) => setNameInputs((p) => ({ ...p, [o.id]: e.target.value }))}
-                        onKeyDown={(e) => e.key === 'Enter' && handleRename(o.id)}
-                        className="flex-1 rounded-xl px-3 py-1.5 text-xs focus:outline-none"
-                        style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid rgba(255,255,255,0.07)' }}
-                      />
-                      <motion.button
-                        onClick={() => handleRename(o.id)}
-                        whileTap={{ scale: 0.92 }}
-                        className="px-3 py-1.5 rounded-xl text-[10px] font-medium"
-                        style={{ backgroundColor: 'rgba(255,255,255,0.04)', color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.07)' }}
-                      >
-                        Save
-                      </motion.button>
-                    </div>
-                  </div>
-                </div>
-              ))
             )}
           </motion.div>
         )}

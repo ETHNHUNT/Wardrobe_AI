@@ -77,6 +77,7 @@
 | `frontend/src/components/ItemCard.jsx` | Grid card: photo, swatches, worn badge, mark worn |
 | `frontend/src/components/ItemDetailModal.jsx` | Full-screen sheet: view/edit/retag/fit-check/delete |
 | `frontend/src/components/OutfitCard.jsx` | Outfit display: thumbnails, reason, stars, actions |
+| `frontend/src/components/OutfitGallery.jsx` | WebGL Three.js horizontal drag gallery with sticky shader effect; replaces saved outfits grid in OutfitBuilder |
 | `frontend/src/components/BarcodeScanner.jsx` | @zxing full-screen camera barcode reader |
 | `frontend/src/components/PhaseIndicator.jsx` | AddItem 4-step progress bar (Photo→Preview→AI Tag→Done) |
 | `frontend/src/components/SplineScene.jsx` | Lazy-loaded Spline 3D wrapper + error boundary |
@@ -589,13 +590,13 @@ Each page wrapped in `<ErrorBoundary>` to prevent white-screen crashes.
 
 **API calls:** `POST /outfits/generate`, `GET /outfits`, `GET /outfits/history`, `POST /outfits`, `PUT /outfits/{id}`, `DELETE /outfits/{id}`, `POST /outfits/{id}/worn`
 
-**Components used:** `OutfitCard`
+**Components used:** `OutfitCard` (Generate tab), `OutfitGallery` (Saved tab)
 
 **Key behaviors:**
 - Season auto-inferred from current month on mount
 - "Wear Today?" → `POST /outfits/generate {occasion: 'casual', season: current}`
 - Tab transitions: Framer Motion AnimatePresence x-slide
-- Saved tab: star rating (GSAP bounce on click), name input + Save, worn tracking (count + last date)
+- Saved tab: WebGL drag gallery (`OutfitGallery`) with sticky deformation shader — replaces old card grid
 - History tab: date chip (MM-DD-YYYY), item thumbnails (first 5), times worn, GSAP stagger entrance
 
 ---
