@@ -81,7 +81,8 @@ export default function Profile() {
         })
         setBrandList(parseBrandSizes(rawSizes))
       } catch (err) {
-        console.error('Failed to load profile:', err)
+        console.error('[DEBUG] Failed to load profile:', err)
+        toast({ message: 'Could not load profile — is the backend running?', type: 'error', duration: 4000 })
       } finally {
         setLoading(false)
       }

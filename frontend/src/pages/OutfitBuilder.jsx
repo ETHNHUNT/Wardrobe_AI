@@ -62,6 +62,11 @@ export default function OutfitBuilder() {
         )
       }
     }
+    return () => {
+      if (historyRef.current) {
+        gsap.killTweensOf(historyRef.current.querySelectorAll('.history-card'))
+      }
+    }
   }, [loadingHistory, historyOutfits])
 
   async function fetchHistory() {
@@ -320,7 +325,7 @@ export default function OutfitBuilder() {
                 ))}
               </div>
             ) : savedOutfits.length > 0 ? (
-              <OutfitGallery outfits={savedOutfits} />
+              <OutfitGallery outfits={savedOutfits} onRate={handleRate} onDelete={handleDelete} onMarkWorn={handleMarkWorn} />
             ) : (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <p className="text-[var(--text-muted)] text-sm">No saved outfits yet</p>
