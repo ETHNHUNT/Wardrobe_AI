@@ -1,3 +1,4 @@
+import logging
 import re
 import json
 import base64
@@ -5,13 +6,15 @@ import os
 
 import httpx
 
+logger = logging.getLogger("wardrobeai.ai")
+
 # ── Ollama config ──────────────────────────────────────────────────────────────
 OLLAMA_URL = "http://localhost:11434/api/chat"
 MODEL = "qwen3.5:2b"
 
 # ── Gemini fallback config (REST API via httpx — no extra dependencies) ────────
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = "gemini-3.1-flash-lite-preview"
+GEMINI_MODEL = "gemini-2.5-flash-lite"
 _GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 
 
@@ -89,10 +92,14 @@ async def _gemini_vision(image_path: str, prompt: str) -> str:
     }
     async with httpx.AsyncClient(timeout=120.0) as client:
         resp = await client.post(url, json=payload)
+    if resp.status_code != 200:
+        logger.warning("Gemini vision returned HTTP %s: %s", resp.status_code, resp.text[:200])
+        return ""
     data = resp.json()
     try:
         return data["candidates"][0]["content"]["parts"][0]["text"]
     except (KeyError, IndexError):
+        logger.warning("Gemini vision: unexpected response structure: %s", str(data)[:200])
         return ""
 
 
@@ -105,10 +112,14 @@ async def _gemini_text(prompt: str, temperature: float = 0.1) -> str:
     }
     async with httpx.AsyncClient(timeout=120.0) as client:
         resp = await client.post(url, json=payload)
+    if resp.status_code != 200:
+        logger.warning("Gemini text returned HTTP %s: %s", resp.status_code, resp.text[:200])
+        return ""
     data = resp.json()
     try:
         return data["candidates"][0]["content"]["parts"][0]["text"]
     except (KeyError, IndexError):
+        logger.warning("Gemini text: unexpected response structure: %s", str(data)[:200])
         return ""
 
 
@@ -161,13 +172,14 @@ async def tag_clothing_image(image_path: str) -> dict:
 
     # Gemini fallback
     if gemini_available():
+        logger.info("Ollama tagging failed — falling back to Gemini")
         try:
             raw = await _gemini_vision(image_path, TAGGING_PROMPT)
             result = parse_ai_json(raw)
             if result:
                 return result
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Gemini tagging fallback failed: %s", e)
 
     return {}
 

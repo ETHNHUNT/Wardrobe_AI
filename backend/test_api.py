@@ -253,7 +253,7 @@ def test_outfits(client: httpx.Client, item_id: int | None, ollama_available: bo
         if r.status_code == 200:
             data = r.json()
             check("generate returns suggestions key", "suggestions" in data)
-    elif not ai_available:
+    elif not ollama_available:
         skip("POST /outfits/generate", "no AI backend available")
     else:
         skip("POST /outfits/generate", "no items in wardrobe")
