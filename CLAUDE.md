@@ -5,7 +5,7 @@
 A personal, locally-hosted AI wardrobe manager. The user (Vipin) runs this on his Windows PC;
 his phone connects to it over the same WiFi. No cloud hosting. Zero ongoing cost. Not public. Single user only.
 
-**Current State: v1.1 — All 4 build phases complete + v1.1 bug-fix pass (cascading delete, upload limit, gap cache, UPC validation, error toasts, memoization).**
+**Current State: v1.2 — All 4 build phases + v1.1 bug-fix pass + v1.2 outfit intelligence redesign (Sanzo Wada color palettes, skin tone intelligence, enriched AI prompts, outfit validation).**
 
 -----
 
@@ -19,7 +19,7 @@ his phone connects to it over the same WiFi. No cloud hosting. Zero ongoing cost
 | Build Tool         | Vite 7.3.1                                | Fast HMR, @tailwindcss/vite plugin                            |
 | Database           | SQLite via SQLModel                       | Zero setup, single file, personal use                         |
 | AI Primary         | Ollama qwen3.5:2b (2.7GB)                 | Local, free, native multimodal, fits 4GB VRAM with headroom   |
-| AI Fallback        | Google Gemini 2.5 Flash-Lite free tier    | Backlog — not yet implemented in code                         |
+| AI Fallback        | Google Gemini 2.5 Flash-Lite free tier    | REST API fallback via GEMINI_API_KEY env var                  |
 | Image Storage      | Local filesystem (backend/data/images/)   | Simple, no cloud                                              |
 | Barcode Lookup     | UPCItemDB API free no auth                | https://api.upcitemdb.com/prod/trial/lookup?upc={upc}         |
 | Barcode Scanning   | @zxing/library 0.21.3                     | Phone camera barcode reading in browser                       |
@@ -66,12 +66,14 @@ wardrobeai/
 │   │   ├── outfits.py                   # GET/POST /outfits + AI generation
 │   │   └── shop.py                      # GET /shop/gaps, /shop/suggest (with 300s cache)
 │   ├── services/
-│   │   ├── ai_service.py                # Ollama calls (vision + text)
+│   │   ├── ai_service.py                # Ollama calls (vision + text) — enriched prompts with skin tone + harmony hints
 │   │   ├── barcode_service.py           # UPC lookup via UPCItemDB (legacy, wrapped by product_lookup_service)
-│   │   ├── shopping_service.py          # Gap analysis + size inference + Google Shopping URLs
-│   │   ├── color_service.py             # Instant palette analysis + complementary color suggestions (no AI)
+│   │   ├── shopping_service.py          # Gap analysis + size inference + Google Shopping URLs + recommended_colors
+│   │   ├── color_service.py             # Sanzo Wada palette-based color harmony scoring (159 colors, 348 palettes)
+│   │   ├── sanzo_wada_data.json         # 159 Sanzo Wada colors with LAB values + 348 palette combination IDs
+│   │   ├── skin_tone_service.py         # Skin tone × undertone → flattering/avoid color rules for Indian skin tones
 │   │   ├── fit_service.py               # Garment vs body measurement fit verification
-│   │   ├── compatibility_service.py     # Shopping suggestion compatibility scoring (0–1)
+│   │   ├── compatibility_service.py     # Shopping suggestion compatibility scoring (0–1) with skin tone bonus
 │   │   └── product_lookup_service.py    # 4-source barcode lookup chain + label OCR
 │   ├── data/
 │   │   └── images/                      # Stored clothing photos: {id}_{uuid}.jpg
@@ -88,7 +90,7 @@ wardrobeai/
 │       ├── lib/
 │       │   ├── utils.js                 # cn() class merger, parseJson() safe parser, parseColorString()
 │       │   ├── scenes.js                # Spline 3D scene URL constants
-│       │   ├── constants.js             # Shared enums (CATEGORIES, OCCASIONS, SEASONS, FIT_TYPES), INPUT_STYLE, toggleArr(), isPhotoValid()
+│       │   ├── constants.js             # Shared enums + SKIN_TONES/UNDERTONES/LABELS, INPUT_STYLE, toggleArr(), isPhotoValid()
 │       │   └── colors.js                # COLOR_MAP + getColorCSS() — maps color names to CSS values
 │       ├── pages/
 │       │   ├── Wardrobe.jsx             # Grid view + filters + 3D hero + GSAP animations
@@ -135,6 +137,8 @@ class UserProfile(SQLModel, table=True):
     arm_length_cm: float = 0
     neck_cm: float = 0
     brand_sizes: str = "{}"  # JSON string: {"Zara": "M", "H&M": "L"}
+    skin_tone: str | None = None      # "fair", "light-medium", "medium", "olive", "deep"
+    undertone: str | None = None      # "warm", "cool", "neutral"
 ```
 
 ### ClothingItem
@@ -219,18 +223,51 @@ def _apply_tags(item, tags, *, preserve_existing=False):
             setattr(item, field, json.dumps(ai_val or []))
 ```
 
+### Color Service (Sanzo Wada palette-based, v1.2)
+
+The color service was rewritten in v1.2 to use Sanzo Wada's "A Dictionary of Color Combinations"
+(159 named colors, 348 expert-curated palettes) instead of the previous 5-group compatibility matrix.
+
+```python
+# Core flow:
+# 1. Map clothing color name → hex via _CLOTHING_COLOR_HEX dict
+# 2. Convert hex → RGB → LAB (CIE L*a*b*, D50 illuminant)
+# 3. Find nearest Sanzo Wada color by CIE76 Delta-E distance
+# 4. Score compatibility by counting shared palette IDs between two colors
+
+find_nearest_sanzo_color(color_name: str) -> dict | None      # @lru_cache(512)
+are_colors_compatible(color_a: str, color_b: str) -> float     # 0.0–1.0
+get_palette_harmony_score(colors: list[str]) -> float          # Full outfit harmony
+get_palette_summary(items: list[dict]) -> dict                 # Wardrobe color breakdown
+suggest_complementary_colors(wardrobe_colors, skin_profile) -> list[dict]  # v1.2: skin-tone filtered
+```
+
+### Skin Tone Service (v1.2)
+
+Static lookup tables for 8 skin tone × undertone combinations focused on Indian complexions.
+No AI calls — instant.
+
+```python
+get_flattering_colors(skin_tone: str, undertone: str) -> dict   # {best, good, avoid}
+score_color_for_skin(color_name: str, skin_tone, undertone) -> float  # 0.1 (avoid) – 1.0 (best)
+get_skin_tone_context_for_ai(skin_tone, undertone) -> str       # Natural language for AI prompts
+get_skin_tone_color_guidance_for_ai(skin_tone, undertone) -> str  # Rules section for prompts
+```
+
 ### Gap Analysis Cache
 
 `/shop/gaps` and `/shop/suggest` share a 300-second in-memory cache to avoid a second
 30–60s Ollama call when both are hit on the same page load:
 
 ```python
-_gaps_cache: dict = {"result": None, "item_count": -1, "ts": 0.0}
+_gaps_cache: dict = {"result": None, "item_count": -1, "ts": 0.0, "skin_key": ""}
 _GAPS_CACHE_TTL = 300  # seconds (5 min — AI call takes 30–60s, cache must outlast it)
 ```
 
 Force-refresh via `GET /shop/gaps?force=true`.
 Deleting any ClothingItem calls `invalidate_gaps_cache()` automatically.
+**v1.2**: Cache key now includes `skin_key` (skin tone context string). Changing skin tone
+in profile calls `invalidate_gaps_cache()` to force fresh AI analysis with new skin guidance.
 
 ### Vision Tagging Prompt
 
@@ -273,18 +310,38 @@ async def tag_clothing_image(image_path: str) -> dict:
 ### Outfit Generation Prompt
 
 ```python
-async def generate_outfits(items: list[dict], occasion: str, season: str) -> list[dict]:
+async def generate_outfits(
+    items: list[dict],
+    occasion: str,
+    season: str,
+    past_outfits: list[dict] | None = None,
+    skin_tone_context: str | None = None,        # v1.2: injected from skin_tone_service
+    color_harmony_hints: list[str] | None = None, # v1.2: wardrobe colors for Sanzo palette matching
+    wear_frequency: dict[int, int] | None = None, # v1.2: prefer least-worn items
+) -> list[dict]:
     # Sends only essential item fields: id, category, colors, occasions, seasons, fit_type
     # Temperature 0.3 for variety
+    # Prompt now instructs AI: "personal stylist for an Indian man" + skin tone guidance
     # Returns: [{"items": [1, 3], "reason": "brief note"}, ...]
-    # Outfits endpoint enriches IDs to full item objects before returning to frontend
+    # Outfits endpoint enriches IDs to full item objects + validates top+bottom + computes harmony_score
+```
+
+### Outfit Validation (v1.2)
+
+```python
+def validate_outfit(item_ids: list[int], item_map: dict[int, dict]) -> bool:
+    """Ensure outfit has at least one top and one bottom."""
+    # _TOPS_SET = {"tshirt", "shirt", "polo", "jacket", "hoodie", "sweater", "blazer", "coat", "top"}
+    # _BOTTOMS_SET = {"jeans", "chinos", "trousers", "shorts"}
+    # Invalid outfits (e.g., just shoes + accessory) are filtered out before returning to frontend
 ```
 
 ### Gap Analysis Prompt
 
 ```python
-async def analyze_gaps(items: list[dict]) -> dict:
+async def analyze_gaps(items: list[dict], skin_tone_context: str | None = None) -> dict:
     # Temperature 0.1 for consistency
+    # v1.2: skin_tone_context injected to recommend flattering colors for missing items
     # Returns: {"gaps": [...], "coverage_score": {...}}
     # Each gap: {"occasion": "formal", "missing_items": [...], "priority": "high", "reason": "..."}
 ```
@@ -316,9 +373,9 @@ DELETE /outfits/{id}
 POST   /outfits/{id}/worn               # Increment outfit times_worn + worn_date + all item times_worn
 GET    /outfits/history                 # Worn outfits sorted by worn_date DESC
 
-GET    /shop/gaps                       # ?force=true to bypass 300s cache
-GET    /shop/suggest                    # ?brand=zara&budget_cad=100
-GET    /shop/palette                    # Instant color palette analysis (no AI) — by_group, all_colors, complementary_suggestions
+GET    /shop/gaps                       # ?force=true to bypass 300s cache — skin tone context injected
+GET    /shop/suggest                    # ?brand=zara&budget_cad=100 — now includes recommended_colors, versatility_score
+GET    /shop/palette                    # Instant color palette (Sanzo Wada) — by_group, all_colors, complementary_suggestions, flattering_colors
 ```
 
 -----
@@ -497,9 +554,25 @@ All 4 build phases are complete. This section records what was built.
 - **Bug found and fixed**: `StaticFiles` mount in `main.py` ran before `data/images/` was created → added `os.makedirs` before `app.mount()`
 - All 243 tests pass without Ollama (AI tests gracefully skipped)
 
+### Phase 6 — Outfit Intelligence Redesign (v1.2) ✅
+
+- **Sanzo Wada color palette integration**: 159 named colors with LAB values + 348 curated palette combinations from "A Dictionary of Color Combinations". `color_service.py` fully rewritten to use CIE76 LAB distance for nearest-color matching and shared palette counting for pairwise compatibility scoring.
+- **Skin tone intelligence**: New `skin_tone_service.py` with 8 skin tone × undertone rule sets focused on Indian complexions (fair/light-medium/medium/olive/deep × warm/cool/neutral). Returns flattering/good/avoid color lists, numeric scoring (0.0–1.0), and natural-language AI prompt context.
+- **Database migration**: `skin_tone` and `undertone` TEXT columns added to `userprofile` table (Iteration 8 migration in `database.py`).
+- **Enriched AI outfit prompts**: `generate_outfits()` now receives skin tone context, color harmony hints (wardrobe colors), wear frequency data, and instructs AI as "personal stylist for an Indian man" with skin tone guidance.
+- **Outfit validation**: New `validate_outfit()` function ensures every AI-generated outfit has at least 1 top + 1 bottom. Invalid outfits are silently filtered before returning to frontend.
+- **Color harmony scoring**: Each generated outfit now includes `harmony_score` (0.0–1.0) computed via Sanzo Wada palette matching.
+- **Compatibility scoring upgrade**: `_score_pair()` weights rebalanced (category 0.35, color 0.30, occasion 0.15, season 0.10, skin tone 0.10). Skin tone flattery bonus added as 10% weight.
+- **Shopping suggestions upgrade**: New `recommended_colors` (flattering colors from skin tone rules) and `versatility_score` (% of wardrobe this pairs with) fields on every suggestion.
+- **Gap analysis cache**: Cache key now includes `skin_key` dimension. Profile skin tone changes invalidate the cache.
+- **Palette endpoint**: `/shop/palette` now returns `flattering_colors` when skin tone is set, and `complementary_suggestions` are filtered to exclude skin-tone-unflattering colors.
+- **Frontend Profile.jsx**: New "Skin Tone & Undertone" section with dropdowns and vein-test tip. Skin tone/undertone stored and round-tripped through the API.
+- **Frontend Shop.jsx**: Suggestion cards show color swatches for `recommended_colors` and "Pairs with X% of wardrobe" versatility text.
+- **Frontend constants.js**: New `SKIN_TONES`, `UNDERTONES`, `SKIN_TONE_LABELS`, `UNDERTONE_LABELS` exports.
+
 ### Backlog (Not Yet Implemented)
 
-- Gemini 2.5 Flash-Lite fallback — referenced in config but no actual code path exists
+- Gemini 2.5 Flash-Lite fallback — implemented in ai_service.py (vision + text) but untested in production
 - Versatility score per shopping suggestion ("this chino matches 7 of your tops") — compatibility_service exists but full UI not wired
 - Pagination on `/items` and `/outfits` list endpoints (currently return all rows)
 
@@ -524,7 +597,13 @@ All 4 build phases are complete. This section records what was built.
 - **`projectstructure.md` must be kept in sync**: After ANY code change — new file, new endpoint, new model field, component added/removed, logic change — update `projectstructure.md` in the same commit. Never leave it stale.
 - **After every correction, update CLAUDE.md** — ruthlessly. Keep iterating until mistake rate measurably drops.
 - **BUG FIXED (v1.1.1): `StaticFiles` mount race on fresh install** — `app.mount("/images", StaticFiles(...))` runs at module import time, BEFORE `lifespan()` creates `data/images/`. Fix: add `os.makedirs("data/images", exist_ok=True)` immediately before `app.mount()` in `main.py`. Without this, `uvicorn` crashes with `RuntimeError: Directory 'data/images' does not exist` on any fresh install where the directory hasn't been pre-created.
-- **Automated verification**: `backend/test_api.py` (62 tests) + `backend/test_adversarial.py` (139 tests) + Loop 4 stress battery (42 tests). All pass without Ollama (AI tests gracefully skipped). Run: `bash scripts/verify.sh` — starts backend automatically, clears DB, runs all 4 loops, cleans up.
+- **Automated verification**: `backend/test_api.py` (67 tests) + `backend/test_adversarial.py` (139 tests) + Loop 4 stress battery (42 tests). All pass without Ollama (AI tests gracefully skipped). Run: `bash scripts/verify.sh` — starts backend automatically, clears DB, runs all 4 loops, cleans up.
+- **Sanzo Wada data**: `backend/services/sanzo_wada_data.json` is loaded once at module import time. If file is missing/corrupt, `color_service.py` will crash on import. The data contains 159 colors with `name`, `hex`, `rgb`, `lab`, `swatch`, and `combinations` (palette IDs).
+- **Skin tone service**: `skin_tone_service.py` uses static lookup tables — no AI calls. Neutral undertone = union of warm + cool "best" colors with no "avoid" list. Missing/unrecognized skin tone falls back to universally flattering Indian palette (navy, emerald, maroon, teal, white).
+- **Color matching pipeline**: clothing color name → `_CLOTHING_COLOR_HEX` lookup → RGB → LAB → CIE76 distance against 159 Sanzo Wada LAB values → nearest match. `@lru_cache(maxsize=512)` on `find_nearest_sanzo_color()` avoids recomputing.
+- **Outfit validation**: `validate_outfit()` in `ai_service.py` checks for top+bottom presence. This is a post-filter — the AI prompt also requests it, but models sometimes ignore constraints. Both the prompt rule and the post-filter work together as defense-in-depth.
+- **Profile skin tone changes invalidate gaps cache**: `POST /profile` with `skin_tone` or `undertone` in the payload calls `invalidate_gaps_cache()` from `routers/shop.py`. This ensures the next `/shop/gaps` call re-runs AI analysis with updated skin tone context.
+- **Compatibility scoring weights (v1.2)**: category 0.35, color (Sanzo Wada) 0.30, occasion overlap 0.15, season overlap 0.10, skin tone flattery bonus 0.10. Previous weights: category 0.40, color 0.30, occasion 0.20, season 0.10.
 
 -----
 

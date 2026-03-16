@@ -33,6 +33,9 @@ def run_migrations():
         ("savedoutfit", "name",       "TEXT"),
         # Iteration 7 — last worn date on ClothingItem
         ("clothingitem", "last_worn_date", "TEXT"),      # ISO-8601 string
+        # Iteration 8 — skin tone + undertone on UserProfile
+        ("userprofile", "skin_tone", "TEXT"),
+        ("userprofile", "undertone", "TEXT"),
     ]
 
     with engine.connect() as conn:

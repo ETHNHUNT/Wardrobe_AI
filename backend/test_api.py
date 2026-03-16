@@ -125,6 +125,19 @@ def test_profile(client: httpx.Client):
     # Backend may accept it (stored as string) or reject — just must not 500
     check("POST /profile with bad brand_sizes doesn't 500", r.status_code != 500)
 
+    # POST /profile — skin tone update
+    r = client.post("/profile", json={"skin_tone": "medium", "undertone": "warm"})
+    check("POST /profile skin_tone returns 200", r.status_code == 200)
+    data = r.json()
+    check("Skin tone saved correctly", data.get("skin_tone") == "medium")
+    check("Undertone saved correctly", data.get("undertone") == "warm")
+
+    # GET /profile — skin tone roundtrip
+    r = client.get("/profile")
+    data = r.json()
+    check("GET /profile returns saved skin_tone", data.get("skin_tone") == "medium")
+    check("GET /profile returns saved undertone", data.get("undertone") == "warm")
+
     # Restore
     client.post("/profile", json={"height_cm": 178.5, "name": "Vipin"})
 
@@ -370,6 +383,7 @@ def test_shop(client: httpx.Client):
     check("GET /shop/palette has by_group", "by_group" in data)
     check("GET /shop/palette has all_colors list", isinstance(data.get("all_colors"), list))
     check("GET /shop/palette has complementary_suggestions list", isinstance(data.get("complementary_suggestions"), list))
+    check("GET /shop/palette has flattering_colors", "flattering_colors" in data)
 
 
 def test_outfit_cleanup(client: httpx.Client, outfit_id: int | None, item_id: int | None):

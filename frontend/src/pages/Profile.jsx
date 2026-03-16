@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Trash2 } from 'lucide-react'
 import axios from 'axios'
 import { useToast } from '../components/Toast'
+import { SKIN_TONES, UNDERTONES, SKIN_TONE_LABELS, UNDERTONE_LABELS } from '../lib/constants'
 
 const COMMON_BRANDS = ['Zara', 'H&M', 'Uniqlo', 'Mango', 'Gap', 'Levi\'s', 'Nike', 'Adidas', 'Puma', 'Reebok', 'Gucci', 'Armani', 'Calvin Klein', 'Tommy Hilfiger', 'Ralph Lauren', 'Other']
 const SIZE_OPTIONS  = ['XXS', 'XS', 'S', 'S/M', 'M', 'L', 'L/XL', 'XL', 'XXL', 'XXXL', '28', '30', '32', '34', '36', '38', '40', '42']
@@ -52,6 +53,8 @@ export default function Profile() {
     height_cm: '', weight_kg: '', chest_cm: '', waist_cm: '',
     hips_cm: '', inseam_cm: '', shoulder_cm: '', arm_length_cm: '', neck_cm: '',
     brand_sizes: '{}',
+    skin_tone: '',
+    undertone: '',
   })
   const [brandList, setBrandList] = useState([])      // Iteration 5: structured brand sizes
   const [newBrand, setNewBrand]   = useState('')
@@ -78,6 +81,8 @@ export default function Profile() {
           arm_length_cm:  data.arm_length_cm  ?? '',
           neck_cm:        data.neck_cm        ?? '',
           brand_sizes:    rawSizes,
+          skin_tone:      data.skin_tone      ?? '',
+          undertone:      data.undertone      ?? '',
         })
         setBrandList(parseBrandSizes(rawSizes))
       } catch (err) {
@@ -114,6 +119,9 @@ export default function Profile() {
     setSaving(true)
     try {
       const payload = { ...form, brand_sizes: brandSizesToJson(brandList) }
+      // Convert empty skin tone/undertone to null so backend doesn't store ""
+      if (!payload.skin_tone) delete payload.skin_tone
+      if (!payload.undertone) delete payload.undertone
       for (const field of MEASUREMENT_FIELDS) {
         const rawValue = payload[field.key]
         if (rawValue === '') { delete payload[field.key]; continue }
@@ -194,6 +202,59 @@ export default function Profile() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Skin Tone & Undertone */}
+        <div>
+          <h2 className="text-xs uppercase tracking-[0.22em] mb-2" style={{ color: 'var(--accent)' }}>
+            Skin Tone &amp; Undertone
+          </h2>
+          <p className="text-[11px] mb-4" style={{ color: 'var(--text-muted)' }}>
+            Used for personalized color recommendations in outfits and shopping
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>
+                Skin Tone
+              </label>
+              <select
+                name="skin_tone"
+                value={form.skin_tone}
+                onChange={handleChange}
+                onFocus={() => setFocused('skin_tone')}
+                onBlur={() => setFocused(null)}
+                className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none appearance-none"
+                style={{ ...INPUT_STYLE, ...(focused === 'skin_tone' ? { border: INPUT_FOCUS_STYLE, boxShadow: INPUT_FOCUS_SHADOW } : {}) }}
+              >
+                <option value="">Not set</option>
+                {SKIN_TONES.map((t) => (
+                  <option key={t} value={t}>{SKIN_TONE_LABELS[t]}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>
+                Undertone
+              </label>
+              <select
+                name="undertone"
+                value={form.undertone}
+                onChange={handleChange}
+                onFocus={() => setFocused('undertone')}
+                onBlur={() => setFocused(null)}
+                className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none appearance-none"
+                style={{ ...INPUT_STYLE, ...(focused === 'undertone' ? { border: INPUT_FOCUS_STYLE, boxShadow: INPUT_FOCUS_SHADOW } : {}) }}
+              >
+                <option value="">Not set</option>
+                {UNDERTONES.map((u) => (
+                  <option key={u} value={u}>{UNDERTONE_LABELS[u]}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <p className="text-[10px] mt-2" style={{ color: 'rgba(107,101,96,0.5)' }}>
+            Tip: Check wrist veins — green = warm, blue/purple = cool, both = neutral
+          </p>
         </div>
 
         {/* Brand sizes — Iteration 5: structured UI replacing raw JSON textarea */}

@@ -13,6 +13,22 @@ export const SEASONS = ['spring', 'summer', 'fall', 'winter']
 
 export const FIT_TYPES = ['slim', 'regular', 'oversized', 'relaxed']
 
+export const SKIN_TONES = ['fair', 'light-medium', 'medium', 'olive', 'deep']
+export const UNDERTONES = ['warm', 'cool', 'neutral']
+
+export const SKIN_TONE_LABELS = {
+  'fair': 'Fair',
+  'light-medium': 'Light Medium',
+  'medium': 'Medium (Wheatish)',
+  'olive': 'Olive',
+  'deep': 'Deep / Dusky',
+}
+export const UNDERTONE_LABELS = {
+  'warm': 'Warm (golden/yellow veins)',
+  'cool': 'Cool (blue/purple veins)',
+  'neutral': 'Neutral (mix of both)',
+}
+
 // Base input style for all text/number/textarea fields across the app.
 // Note: Profile.jsx has a variant with an extra transition property — kept local there.
 export const INPUT_STYLE = {
