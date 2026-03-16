@@ -11,6 +11,9 @@ venv/
 # SQLite database
 backend/wardrobe.db
 
+# Uploaded images (local filesystem storage)
+backend/data/
+
 # Test artifacts
 test_shirt.jpg
 

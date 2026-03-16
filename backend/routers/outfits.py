@@ -30,6 +30,7 @@ class SaveOutfitRequest(BaseModel):
     occasion: str | None = None
     season: str | None = None
     rating: int | None = None
+    name: str | None = None
 
 
 class OutfitUpdate(BaseModel):
@@ -71,7 +72,7 @@ async def generate_outfit_suggestions(
     if not suggestions:
         raise HTTPException(
             status_code=503,
-            detail="AI outfit generation failed. Make sure Ollama is running.",
+            detail="AI outfit generation failed. Start Ollama or set GEMINI_API_KEY to enable AI features.",
         )
 
     item_map = {i.id: i.model_dump() for i in items}
@@ -141,6 +142,7 @@ def save_outfit(req: SaveOutfitRequest, session: Session = Depends(get_session))
         occasion=req.occasion,
         season=req.season,
         rating=req.rating,
+        name=req.name,
     )
     session.add(outfit)
     session.commit()
