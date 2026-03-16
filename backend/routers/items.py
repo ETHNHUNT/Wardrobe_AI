@@ -1,6 +1,7 @@
 import io
 import json
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -89,7 +90,7 @@ async def add_item(
     final_path = None
     try:
         # Flush to get DB-assigned ID without committing the transaction
-        item = ClothingItem(photo_path="tmp", category="unknown")
+        item = ClothingItem(photo_path="tmp", category="other")
         session.add(item)
         session.flush()
         session.refresh(item)
@@ -230,15 +231,16 @@ async def scan_label_photo(photo: UploadFile = File(...)):
 
 @router.post("/items/{item_id}/worn")
 def mark_worn(item_id: int, session: Session = Depends(get_session)):
-    """Increment the times_worn counter for an item."""
+    """Increment the times_worn counter for an item and record last_worn_date."""
     item = session.get(ClothingItem, item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     item.times_worn = (item.times_worn or 0) + 1
+    item.last_worn_date = datetime.now(timezone.utc).isoformat()
     session.add(item)
     session.commit()
     session.refresh(item)
-    return {"id": item.id, "times_worn": item.times_worn}
+    return {"id": item.id, "times_worn": item.times_worn, "last_worn_date": item.last_worn_date}
 
 
 @router.get("/items/{item_id}")

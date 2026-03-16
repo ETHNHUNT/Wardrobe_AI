@@ -260,6 +260,50 @@ Return ONLY JSON array:
     return result if isinstance(result, list) else []
 
 
+async def generate_week_outfits(
+    items: list[dict],
+    week_context: str = "typical work week",
+) -> list[dict]:
+    """
+    Generate a 7-day outfit plan via Ollama (primary) or Gemini (fallback).
+    Returns list of {"day": "Monday", "occasion": "...", "items": [...], "reason": "..."} or [].
+    """
+    prompt = f"""You are a personal stylist. Plan 7 daily outfits for a {week_context}.
+Monday–Friday: work/casual rotation. Saturday–Sunday: relaxed/casual.
+
+Wardrobe: {json.dumps(_slim_items(items))}
+
+Rules: each outfit 2-4 items, color-coordinate, no identical outfits, vary the looks across the week.
+Return ONLY a JSON array with exactly 7 objects:
+[
+  {{"day": "Monday",    "occasion": "work",   "items": [1, 3],    "reason": "brief note"}},
+  {{"day": "Tuesday",   "occasion": "casual", "items": [2, 5],    "reason": "brief note"}},
+  {{"day": "Wednesday", "occasion": "work",   "items": [1, 4, 6], "reason": "brief note"}},
+  {{"day": "Thursday",  "occasion": "casual", "items": [3, 7],    "reason": "brief note"}},
+  {{"day": "Friday",    "occasion": "work",   "items": [2, 4],    "reason": "brief note"}},
+  {{"day": "Saturday",  "occasion": "casual", "items": [5, 8],    "reason": "brief note"}},
+  {{"day": "Sunday",    "occasion": "casual", "items": [1, 6],    "reason": "brief note"}}
+]"""
+
+    raw = ""
+    try:
+        raw = await _ollama_text(prompt, temperature=0.4)
+    except Exception:
+        pass
+
+    if not raw and gemini_available():
+        try:
+            raw = await _gemini_text(prompt, temperature=0.4)
+        except Exception:
+            pass
+
+    if not raw:
+        return []
+
+    result = parse_ai_json(raw)
+    return result if isinstance(result, list) else []
+
+
 async def analyze_gaps(items: list[dict]) -> dict:
     """
     Analyze wardrobe gaps by occasion and season via Ollama or Gemini fallback.

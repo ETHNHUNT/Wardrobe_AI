@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import axios from 'axios'
 import { gsap } from 'gsap'
-import { Shirt, Grid3X3, Palette } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { Shirt, Grid3X3, Palette, Search, X } from 'lucide-react'
 import ItemCard from '../components/ItemCard'
 import ItemDetailModal from '../components/ItemDetailModal'
 import SplineScene from '../components/SplineScene'
@@ -10,6 +11,7 @@ import { useToast } from '../components/Toast'
 import { SCENES } from '../lib/scenes'
 import { getColorCSS } from '../lib/colors'
 import { CATEGORIES as BASE_CATEGORIES, OCCASIONS as BASE_OCCASIONS, SEASONS as BASE_SEASONS } from '../lib/constants'
+import { parseJson } from '../lib/utils'
 
 const GROUP_ORDER = ['neutrals', 'cool', 'warm', 'earth', 'bright']
 const GROUP_LABEL = { neutrals: 'Neutrals', cool: 'Cool', warm: 'Warm', earth: 'Earth', bright: 'Bright' }
@@ -94,6 +96,7 @@ export default function Wardrobe() {
   const [items, setItems]           = useState([])
   const [loading, setLoading]       = useState(true)
   const [filters, setFilters]       = useState({ category: '', occasion: '', season: '' })
+  const [searchQuery, setSearchQuery] = useState('')
   const [selectedItem, setSelectedItem] = useState(null)
   const [view, setView]             = useState('grid')  // 'grid' | 'palette'
   const [paletteData, setPaletteData] = useState(null)
@@ -182,6 +185,23 @@ export default function Wardrobe() {
     [paletteData]
   )
 
+  // Frontend text search — filters already-fetched items by brand, tags, colors, notes
+  const filteredItems = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return items
+    return items.filter((item) => {
+      if (item.brand?.toLowerCase().includes(q)) return true
+      if (item.notes?.toLowerCase().includes(q)) return true
+      if (item.category?.toLowerCase().includes(q)) return true
+      if (item.material?.toLowerCase().includes(q)) return true
+      const colors = parseJson(item.colors)
+      if (colors.some((c) => c.toLowerCase().includes(q))) return true
+      const tags = parseJson(item.tags)
+      if (tags.some((t) => t.toLowerCase().includes(q))) return true
+      return false
+    })
+  }, [items, searchQuery])
+
   function handleFilter(key, value) {
     setFilters((prev) => ({ ...prev, [key]: value }))
   }
@@ -225,10 +245,45 @@ export default function Wardrobe() {
           </TextShimmer>
           {!loading && (
             <p className="mt-1.5 text-xs" style={{ color: 'rgba(107,101,96,0.7)', letterSpacing: '0.03em' }}>
-              {items.length} {items.length === 1 ? 'item' : 'items'}
+              {searchQuery ? `${filteredItems.length} of ${items.length}` : items.length} {items.length === 1 ? 'item' : 'items'}
             </p>
           )}
         </div>
+      </div>
+
+      {/* ── Search Bar ── */}
+      <div className="px-5 pb-3">
+        <div
+          className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
+          style={{
+            backgroundColor: 'var(--bg-elevated)',
+            border: '1px solid rgba(255,255,255,0.08)',
+          }}
+        >
+          <Search size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+          <input
+            type="text"
+            placeholder="Search by brand, color, tag…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 bg-transparent outline-none text-sm"
+            style={{ color: 'var(--text-primary)' }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="flex-shrink-0"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
+        {searchQuery && (
+          <p className="text-[10px] mt-1.5" style={{ color: 'var(--text-muted)' }}>
+            {filteredItems.length} of {items.length} items
+          </p>
+        )}
       </div>
 
       {/* ── Filter Pills ── */}
@@ -336,19 +391,36 @@ export default function Wardrobe() {
                 Tap + to add your first item
               </p>
             </div>
+          ) : filteredItems.length === 0 && searchQuery ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <Search size={36} strokeWidth={1} style={{ color: 'rgba(107,101,96,0.3)', marginBottom: 16 }} />
+              <p className="text-sm" style={{ color: 'rgba(107,101,96,0.6)' }}>
+                No items match "{searchQuery}"
+              </p>
+            </div>
           ) : (
             <div ref={gridRef} className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {items.map((item) => (
-                <div key={item.id} className="item-card">
-                  <ItemCard
-                    item={item}
-                    onClick={(i) => setSelectedItem(i)}
-                    onWorn={(id, count) =>
-                      setItems((prev) => prev.map((i) => i.id === id ? { ...i, times_worn: count } : i))
-                    }
-                  />
-                </div>
-              ))}
+              <AnimatePresence mode="popLayout">
+                {filteredItems.map((item) => (
+                  <motion.div
+                    key={item.id}
+                    layout
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.18 }}
+                    className="item-card"
+                  >
+                    <ItemCard
+                      item={item}
+                      onClick={(i) => setSelectedItem(i)}
+                      onWorn={(id, count, lastWornDate) =>
+                        setItems((prev) => prev.map((i) =>
+                          i.id === id ? { ...i, times_worn: count, last_worn_date: lastWornDate ?? i.last_worn_date } : i
+                        ))
+                      }
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </div>
           )}
         </div>

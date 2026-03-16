@@ -30,3 +30,25 @@ export function toggleArr(arr, val) {
 export function isPhotoValid(item) {
   return Boolean(item?.photo_path && item.photo_path !== 'tmp')
 }
+
+// @iconify/react icon identifiers for each clothing category.
+// These use the Material Design Icons (mdi) set which has clothing-specific icons
+// not available in lucide-react.
+export const CATEGORY_ICONS = {
+  tshirt:       'mdi:tshirt-crew',
+  shirt:        'mdi:tshirt-v',
+  polo:         'mdi:tshirt-crew',
+  jacket:       'mdi:hanger',
+  hoodie:       'mdi:hoodie',
+  sweater:      'mdi:hanger',
+  jeans:        'mdi:human-male-height',
+  chinos:       'mdi:human-male-height',
+  trousers:     'mdi:human-male-height',
+  shorts:       'mdi:shorts',
+  shoes:        'mdi:shoe-formal',
+  sneakers:     'mdi:shoe-sneaker',
+  boots:        'mdi:boot',
+  formal_shoes: 'mdi:shoe-formal',
+  accessory:    'mdi:watch',
+  other:        'mdi:hanger',
+}

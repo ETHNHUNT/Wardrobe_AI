@@ -31,6 +31,8 @@ def run_migrations():
         ("savedoutfit", "worn_date",  "TEXT"),           # ISO-8601 string
         ("savedoutfit", "times_worn", "INTEGER DEFAULT 0"),
         ("savedoutfit", "name",       "TEXT"),
+        # Iteration 7 — last worn date on ClothingItem
+        ("clothingitem", "last_worn_date", "TEXT"),      # ISO-8601 string
     ]
 
     with engine.connect() as conn:
