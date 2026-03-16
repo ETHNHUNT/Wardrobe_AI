@@ -23,7 +23,7 @@ import json
 import base64
 import httpx
 
-from services.ai_service import parse_ai_json, OLLAMA_URL, MODEL
+from services.ai_service import parse_ai_json, OLLAMA_URL, MODEL, gemini_available, _gemini_vision
 
 
 # ── Source 1: UPCItemDB (existing, no auth) ──────────────────────────────────
@@ -193,10 +193,13 @@ Return ONLY valid JSON with no markdown:
 
 async def lookup_from_label_photo(image_path: str) -> dict:
     """
-    Use Ollama vision to OCR a clothing label photo.
+    Use Ollama vision (primary) or Gemini (fallback) to OCR a clothing label photo.
     Returns dict with extracted fields. Returns {} on failure.
     Does NOT create a ClothingItem — just returns enrichment data.
     """
+    raw = ""
+
+    # Try Ollama first
     try:
         with open(image_path, "rb") as f:
             image_data = base64.b64encode(f.read()).decode()
@@ -211,15 +214,25 @@ async def lookup_from_label_photo(image_path: str) -> dict:
                 }
             ],
             "stream": False,
-            "options": {"temperature": 0.05},  # Very low temp for OCR accuracy
+            "options": {"temperature": 0.05},
         }
 
         async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(OLLAMA_URL, json=payload)
 
         raw = resp.json()["message"]["content"]
-        result = parse_ai_json(raw)
-        return result if isinstance(result, dict) else {}
-
     except Exception:
+        pass
+
+    # Gemini fallback
+    if not raw and gemini_available():
+        try:
+            raw = await _gemini_vision(image_path, _LABEL_PROMPT)
+        except Exception:
+            pass
+
+    if not raw:
         return {}
+
+    result = parse_ai_json(raw)
+    return result if isinstance(result, dict) else {}

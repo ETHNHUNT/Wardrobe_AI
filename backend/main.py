@@ -48,6 +48,7 @@ async def lifespan(app: FastAPI):
     # Gemini fallback status
     from services.ai_service import gemini_available
     if gemini_available():
+        print("  ✓ Gemini fallback is configured and ready (model: gemini-2.5-flash-lite)")
         logger.warning("Gemini fallback is configured and ready ✓")
     elif not ollama_ok:
         logger.warning("No AI backend available — set GEMINI_API_KEY or start Ollama for AI features.")
