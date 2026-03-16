@@ -1,4 +1,4 @@
-# WardrobeAI — Handoff Document
+hi# WardrobeAI — Handoff Document
 **Last updated:** 2026-03-16
 **Version:** 1.1.0
 **Branch with Gemini testing:** `claude/test-gemini-api-6hWMu`
@@ -148,7 +148,7 @@ frontend/src/components/ItemDetailModal.jsx  ← Edit/retag/delete modal
 
 ### API Key Management
 - **Never commit** `backend/.env` — it's gitignored
-- The env var is: `GEMINI_API_KEY=AIzaSyCZuo7k3iQUMRhbUZag5aURrmbOyxiZLjc`
+- The env var is: `GEMINI_API_KEY=`
 - On Vipin's PC: Either set in `backend/.env` OR export in the terminal before starting uvicorn
 
 ### Running the Stack (Vipin's PC)
