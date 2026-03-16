@@ -14,3 +14,5 @@ class UserProfile(SQLModel, table=True):
     arm_length_cm: float = 0
     neck_cm: float = 0
     brand_sizes: str = "{}"  # JSON string: {"Zara": "M", "H&M": "L"}
+    skin_tone: str | None = None      # "fair", "light-medium", "medium", "olive", "deep"
+    undertone: str | None = None      # "warm", "cool", "neutral"

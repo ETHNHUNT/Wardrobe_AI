@@ -8,7 +8,10 @@ from sqlmodel import Session, select
 from database import get_session
 from models.item import ClothingItem
 from models.outfit import SavedOutfit
-from services.ai_service import generate_outfits, generate_week_outfits
+from models.user import UserProfile
+from services.ai_service import generate_outfits, generate_week_outfits, validate_outfit
+from services.skin_tone_service import get_skin_tone_context_for_ai
+from services.color_service import get_palette_harmony_score
 
 router = APIRouter()
 
@@ -62,6 +65,24 @@ async def generate_outfit_suggestions(
 
     items_as_dicts = [i.model_dump() for i in items]
 
+    # Fetch skin tone context from user profile
+    profile = session.get(UserProfile, 1)
+    skin_tone_context = None
+    if profile:
+        skin_tone_context = get_skin_tone_context_for_ai(profile.skin_tone, profile.undertone)
+
+    # Build color harmony hints from Sanzo Wada palette matching
+    _all_colors = []
+    for itm in items_as_dicts:
+        try:
+            _all_colors.extend(json.loads(itm.get("colors", "[]")) if isinstance(itm.get("colors"), str) else itm.get("colors", []))
+        except (json.JSONDecodeError, TypeError):
+            pass
+    harmony_hints = list(set(_all_colors))[:10] if _all_colors else None
+
+    # Build wear frequency map for variety
+    wear_freq = {i["id"]: i.get("times_worn", 0) for i in items_as_dicts}
+
     # Iteration 6: pass top-rated/worn outfits as preference context
     top_outfits_query = (
         select(SavedOutfit)
@@ -71,7 +92,13 @@ async def generate_outfit_suggestions(
     )
     top_outfits = [o.model_dump() for o in session.exec(top_outfits_query).all()]
 
-    suggestions = await generate_outfits(items_as_dicts, req.occasion, req.season, past_outfits=top_outfits)
+    suggestions = await generate_outfits(
+        items_as_dicts, req.occasion, req.season,
+        past_outfits=top_outfits,
+        skin_tone_context=skin_tone_context or None,
+        color_harmony_hints=harmony_hints,
+        wear_frequency=wear_freq,
+    )
 
     if not suggestions:
         raise HTTPException(
@@ -82,19 +109,32 @@ async def generate_outfit_suggestions(
     item_map = {i.id: i.model_dump() for i in items}
     enriched = []
     for suggestion in suggestions:
-        resolved_items = [
-            item_map[iid]
-            for iid in suggestion.get("items", [])
-            if iid in item_map
-        ]
-        if resolved_items:
-            enriched.append(
-                {
-                    "items": resolved_items,
-                    "item_ids": [i["id"] for i in resolved_items],
-                    "reason": suggestion.get("reason", ""),
-                }
-            )
+        suggestion_ids = [iid for iid in suggestion.get("items", []) if iid in item_map]
+        resolved_items = [item_map[iid] for iid in suggestion_ids]
+        if not resolved_items:
+            continue
+
+        # Validate outfit has top + bottom; skip invalid ones
+        if not validate_outfit(suggestion_ids, item_map):
+            continue
+
+        # Compute color harmony score for this outfit
+        outfit_colors = []
+        for itm in resolved_items:
+            try:
+                outfit_colors.extend(json.loads(itm.get("colors", "[]")) if isinstance(itm.get("colors"), str) else itm.get("colors", []))
+            except (json.JSONDecodeError, TypeError):
+                pass
+        harmony_score = get_palette_harmony_score(outfit_colors) if outfit_colors else 0.0
+
+        enriched.append(
+            {
+                "items": resolved_items,
+                "item_ids": [i["id"] for i in resolved_items],
+                "reason": suggestion.get("reason", ""),
+                "harmony_score": round(harmony_score, 2),
+            }
+        )
 
     return {"occasion": req.occasion, "season": req.season, "suggestions": enriched}
 
@@ -113,7 +153,14 @@ async def generate_week_plan(
         )
 
     items_as_dicts = [i.model_dump() for i in items]
-    week_suggestions = await generate_week_outfits(items_as_dicts, req.week_context)
+
+    # Fetch skin tone context
+    profile = session.get(UserProfile, 1)
+    skin_tone_context = None
+    if profile:
+        skin_tone_context = get_skin_tone_context_for_ai(profile.skin_tone, profile.undertone)
+
+    week_suggestions = await generate_week_outfits(items_as_dicts, req.week_context, skin_tone_context=skin_tone_context or None)
 
     if not week_suggestions:
         raise HTTPException(

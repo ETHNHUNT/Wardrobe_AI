@@ -229,6 +229,9 @@ async def generate_outfits(
     occasion: str,
     season: str,
     past_outfits: list[dict] | None = None,
+    skin_tone_context: str | None = None,
+    color_harmony_hints: list[str] | None = None,
+    wear_frequency: dict[int, int] | None = None,
 ) -> list[dict]:
     """
     Generate 3 outfit suggestions via Ollama (primary) or Gemini (fallback).
@@ -239,16 +242,37 @@ async def generate_outfits(
         slim_past = [{"item_ids": o.get("item_ids"), "rating": o.get("rating"), "name": o.get("name")} for o in past_outfits]
         past_context = f"\nUser's highly-rated past outfits (style reference — do not duplicate): {json.dumps(slim_past)}\n"
 
-    prompt = f"""You are a personal stylist. Suggest exactly 3 outfits for occasion: {occasion}, season: {season}.
-{past_context}
+    skin_section = ""
+    if skin_tone_context:
+        skin_section = f"\n{skin_tone_context}\n"
+
+    harmony_section = ""
+    if color_harmony_hints:
+        harmony_section = f"\nColor harmony hints (items that form curated palettes): {json.dumps(color_harmony_hints[:5])}\n"
+
+    wear_section = ""
+    if wear_frequency:
+        least_worn = sorted(wear_frequency, key=wear_frequency.get)[:6]
+        wear_section = f"\nItems worn least (prefer these for variety): {least_worn}\n"
+
+    prompt = f"""You are a personal stylist for an Indian man. Suggest exactly 3 outfits for occasion: {occasion}, season: {season}.
+{skin_section}{past_context}{harmony_section}{wear_section}
 Wardrobe: {json.dumps(_slim_items(items))}
 
-Rules: each outfit 2-4 items, color-coordinate, match occasion and season. Avoid duplicating past outfits exactly.
+Rules:
+1. Each outfit MUST have at least 1 top (tshirt/shirt/polo/jacket/hoodie/sweater) + 1 bottom (jeans/chinos/trousers/shorts).
+2. Each outfit 2-4 items total. Shoes optional but recommended.
+3. Color-coordinate using harmony hints when possible.
+4. Match the requested occasion and season.
+5. {"Prioritize colors that flatter the user's skin tone." if skin_tone_context else "Choose colors that create good contrast."}
+6. Avoid duplicating past outfits exactly.
+7. Vary item usage — prefer least-worn items.
+
 Return ONLY JSON array:
 [
-  {{"items": [1, 3], "reason": "brief note"}},
-  {{"items": [2, 5, 7], "reason": "brief note"}},
-  {{"items": [1, 4, 6], "reason": "brief note"}}
+  {{"items": [1, 3], "reason": "brief note explaining why this works"}},
+  {{"items": [2, 5, 7], "reason": "brief note explaining why this works"}},
+  {{"items": [1, 4, 6], "reason": "brief note explaining why this works"}}
 ]"""
 
     raw = ""
@@ -275,17 +299,23 @@ Return ONLY JSON array:
 async def generate_week_outfits(
     items: list[dict],
     week_context: str = "typical work week",
+    skin_tone_context: str | None = None,
 ) -> list[dict]:
     """
     Generate a 7-day outfit plan via Ollama (primary) or Gemini (fallback).
     Returns list of {"day": "Monday", "occasion": "...", "items": [...], "reason": "..."} or [].
     """
-    prompt = f"""You are a personal stylist. Plan 7 daily outfits for a {week_context}.
-Monday–Friday: work/casual rotation. Saturday–Sunday: relaxed/casual.
+    skin_section = f"\n{skin_tone_context}\n" if skin_tone_context else ""
 
+    prompt = f"""You are a personal stylist for an Indian man. Plan 7 daily outfits for a {week_context}.
+Monday–Friday: work/casual rotation. Saturday–Sunday: relaxed/casual.
+{skin_section}
 Wardrobe: {json.dumps(_slim_items(items))}
 
-Rules: each outfit 2-4 items, color-coordinate, no identical outfits, vary the looks across the week.
+Rules:
+1. Each outfit MUST have at least 1 top + 1 bottom. 2-4 items per outfit.
+2. Color-coordinate. {"Prioritize flattering colors for the user's skin tone." if skin_tone_context else ""}
+3. No identical outfits. Vary looks across the week.
 Return ONLY a JSON array with exactly 7 objects:
 [
   {{"day": "Monday",    "occasion": "work",   "items": [1, 3],    "reason": "brief note"}},
@@ -316,15 +346,17 @@ Return ONLY a JSON array with exactly 7 objects:
     return result if isinstance(result, list) else []
 
 
-async def analyze_gaps(items: list[dict]) -> dict:
+async def analyze_gaps(items: list[dict], skin_tone_context: str | None = None) -> dict:
     """
     Analyze wardrobe gaps by occasion and season via Ollama or Gemini fallback.
     Returns {"gaps": [...], "coverage_score": {...}} on success,
     or {"gaps": [], "coverage_score": {}} on failure.
     """
     slimmed = _slim_items(items, keep=_GAPS_FIELDS)
-    prompt = f"""Analyze this wardrobe for gaps by occasion and season.
+    skin_section = f"\n{skin_tone_context}\nWhen suggesting missing items, recommend colors that flatter the user's skin tone.\n" if skin_tone_context else ""
 
+    prompt = f"""Analyze this wardrobe for gaps by occasion and season.
+{skin_section}
 Wardrobe: {json.dumps(slimmed)}
 
 Return ONLY JSON:
@@ -355,3 +387,15 @@ Return ONLY JSON:
             return result
 
     return {"gaps": [], "coverage_score": {}}
+
+
+# ── Outfit validation ────────────────────────────────────────────────────────
+
+_TOPS_SET = {"tshirt", "shirt", "polo", "jacket", "hoodie", "sweater", "blazer", "coat", "top"}
+_BOTTOMS_SET = {"jeans", "chinos", "trousers", "shorts"}
+
+
+def validate_outfit(item_ids: list[int], item_map: dict[int, dict]) -> bool:
+    """Ensure outfit has at least one top and one bottom."""
+    categories = {item_map[iid].get("category", "other") for iid in item_ids if iid in item_map}
+    return bool(categories & _TOPS_SET) and bool(categories & _BOTTOMS_SET)

@@ -97,15 +97,26 @@ def build_suggestions(
     brand: str | None,
     budget_cad: float | None,
     wardrobe_items: list[dict] | None = None,
+    skin_tone: str | None = None,
+    undertone: str | None = None,
 ) -> list[dict]:
     """
     Build shopping suggestion records from gap analysis output.
     One suggestion per missing item across all gaps.
     Sorted by compatibility × priority, then high → medium → low.
-    Includes compatibility_score and matching_items when wardrobe_items provided.
+    Includes compatibility_score, matching_items, recommended_colors, and versatility_score.
     """
+    from services.skin_tone_service import get_flattering_colors
+
     priority_order = {"high": 0, "medium": 1, "low": 2}
     suggestions = []
+
+    # Pre-compute flattering colors for skin tone recommendations
+    flattering_rules = {}
+    if skin_tone and undertone:
+        flattering_rules = get_flattering_colors(skin_tone, undertone)
+
+    total_wardrobe = max(len(wardrobe_items), 1) if wardrobe_items else 1
 
     for gap in gaps:
         occasion = gap.get("occasion", "")
@@ -123,11 +134,22 @@ def build_suggestions(
             category = _infer_category_from_string(missing_item)
             size_note = infer_size(category, profile, brand)
 
-            # Compatibility scoring (Iteration 4)
+            # Compatibility scoring with skin tone awareness
             compat = {"score": 0.0, "match_count": 0, "matching_items": []}
             if wardrobe_items:
                 candidate = build_candidate_from_gap_item(missing_item, occasion)
-                compat = score_item_compatibility(candidate, wardrobe_items)
+                compat = score_item_compatibility(
+                    candidate, wardrobe_items,
+                    skin_tone=skin_tone, undertone=undertone,
+                )
+
+            # Recommended colors: flattering + complementary to wardrobe
+            recommended_colors = []
+            if flattering_rules:
+                recommended_colors = (flattering_rules.get("best", []) + flattering_rules.get("good", []))[:5]
+
+            # Versatility score: fraction of wardrobe this pairs with
+            versatility_score = round(compat["match_count"] / total_wardrobe, 2)
 
             suggestions.append({
                 "item": missing_item,
@@ -139,6 +161,8 @@ def build_suggestions(
                 "compatibility_score": compat["score"],
                 "match_count": compat["match_count"],
                 "matching_items": compat["matching_items"],
+                "recommended_colors": recommended_colors,
+                "versatility_score": versatility_score,
             })
 
     # Sort: priority first, then by compatibility score descending

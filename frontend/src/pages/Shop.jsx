@@ -394,6 +394,30 @@ export default function Shop() {
                       </div>
                     </div>
 
+                    {/* Recommended colors for this gap item */}
+                    {(s.recommended_colors?.length ?? 0) > 0 && (
+                      <div className="flex items-center gap-1.5 mb-3">
+                        <span className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                          Best in:
+                        </span>
+                        {s.recommended_colors.slice(0, 5).map((color) => (
+                          <div key={color} className="flex items-center gap-1">
+                            <div className="w-3.5 h-3.5 rounded-full"
+                              style={{ backgroundColor: getColorCSS(color), border: '1px solid rgba(255,255,255,0.15)' }}
+                              title={color} />
+                            <span className="text-[9px] capitalize" style={{ color: 'var(--text-muted)' }}>{color}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Versatility score */}
+                    {(s.versatility_score ?? 0) > 0 && (
+                      <p className="text-[10px] mb-3" style={{ color: 'var(--success)' }}>
+                        Pairs with {Math.round(s.versatility_score * 100)}% of your wardrobe
+                      </p>
+                    )}
+
                     {/* "Why this?" expandable — Framer Motion AnimatePresence */}
                     {hasMatches && (
                       <div className="mb-3">

@@ -2,11 +2,13 @@
 Iteration 4 — Wardrobe Compatibility Scoring
 
 Scores how well a candidate item (to buy) integrates with existing wardrobe items.
-Uses color compatibility, occasion/season overlap, and category complementarity.
+Uses Sanzo Wada color harmony, skin tone flattery, occasion/season overlap,
+and category complementarity.
 """
 
 import json
 from services.color_service import score_color_compatibility
+from services.skin_tone_service import score_color_for_skin
 
 # Category groups for complementarity scoring
 _TOPS = {"tshirt", "shirt", "polo", "hoodie", "sweater", "jacket", "blazer", "coat", "top"}
@@ -39,21 +41,30 @@ def _parse_json_list(value: str | list | None) -> list:
         return []
 
 
-def _score_pair(candidate: dict, wardrobe_item: dict) -> float:
-    """Score how well candidate pairs with a single wardrobe item (0.0 – 1.0)."""
+def _score_pair(
+    candidate: dict,
+    wardrobe_item: dict,
+    *,
+    skin_tone: str | None = None,
+    undertone: str | None = None,
+) -> float:
+    """Score how well candidate pairs with a single wardrobe item (0.0 – 1.0).
+
+    Weights: category 0.35, color 0.30, occasion 0.15, season 0.10, skin tone 0.10.
+    """
     score = 0.0
 
-    # Category complementarity (most important factor)
+    # Category complementarity (0.35)
     a_group = _get_cat_group(candidate.get("category", "other"))
     b_group = _get_cat_group(wardrobe_item.get("category", "other"))
     if a_group != b_group and "other" not in (a_group, b_group):
-        score += 0.40   # Different complementary categories — great pairing
+        score += 0.35   # Different complementary categories — great pairing
     elif a_group == b_group and a_group == "tops":
         score += 0.10   # Same category tops can layer (jacket over shirt)
     else:
         score += 0.10
 
-    # Color compatibility
+    # Color compatibility via Sanzo Wada (0.30)
     a_colors = _parse_json_list(candidate.get("colors"))
     b_colors = _parse_json_list(wardrobe_item.get("colors"))
     color_scores = []
@@ -61,30 +72,44 @@ def _score_pair(candidate: dict, wardrobe_item: dict) -> float:
         for cb in b_colors:
             color_scores.append(score_color_compatibility(ca, cb))
     if color_scores:
-        # Use the best color pair score (not average — we want peak compatibility)
         score += max(color_scores) * 0.30
 
-    # Occasion overlap
+    # Occasion overlap (0.15)
     a_occ = set(_parse_json_list(candidate.get("occasions")))
     b_occ = set(_parse_json_list(wardrobe_item.get("occasions")))
     if a_occ & b_occ:
-        score += 0.20
+        score += 0.15
 
-    # Season overlap
+    # Season overlap (0.10)
     a_sea = set(_parse_json_list(candidate.get("seasons")))
     b_sea = set(_parse_json_list(wardrobe_item.get("seasons")))
     if a_sea & b_sea:
         score += 0.10
 
+    # Skin tone flattery bonus (0.10)
+    if skin_tone and undertone:
+        all_colors = a_colors + b_colors
+        if all_colors:
+            skin_scores = [score_color_for_skin(c, skin_tone, undertone) for c in all_colors]
+            avg_skin = sum(skin_scores) / len(skin_scores)
+            score += avg_skin * 0.10
+
     return min(score, 1.0)
 
 
-def score_item_compatibility(candidate: dict, wardrobe_items: list[dict]) -> dict:
+def score_item_compatibility(
+    candidate: dict,
+    wardrobe_items: list[dict],
+    *,
+    skin_tone: str | None = None,
+    undertone: str | None = None,
+) -> dict:
     """
     Score how well a candidate item integrates with the existing wardrobe.
 
     candidate: dict with keys: category, colors, occasions, seasons, fit_type
     wardrobe_items: list of existing ClothingItem dicts
+    skin_tone/undertone: optional user skin profile for color flattery scoring
 
     Returns:
     {
@@ -100,7 +125,7 @@ def score_item_compatibility(candidate: dict, wardrobe_items: list[dict]) -> dic
 
     scored = []
     for item in wardrobe_items:
-        pair_score = _score_pair(candidate, item)
+        pair_score = _score_pair(candidate, item, skin_tone=skin_tone, undertone=undertone)
         if pair_score >= 0.45:   # Threshold for "this pair works"
             scored.append((pair_score, item))
 
