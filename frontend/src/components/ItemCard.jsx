@@ -1,20 +1,33 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, Clock, AlertCircle } from 'lucide-react'
+import { Icon } from '@iconify/react'
 import axios from 'axios'
 import { parseJson } from '../lib/utils'
-import { getColorCSS, COLOR_MAP } from '../lib/colors'
-import { isPhotoValid } from '../lib/constants'
+import { getColorCSS } from '../lib/colors'
+import { isPhotoValid, CATEGORY_ICONS } from '../lib/constants'
 import { useToast } from './Toast'
 
 const API_URL = import.meta.env.VITE_API_URL
 
+function getDaysAgo(isoDate) {
+  if (!isoDate) return null
+  const diff = Date.now() - new Date(isoDate).getTime()
+  return Math.floor(diff / (1000 * 60 * 60 * 24))
+}
+
 export default function ItemCard({ item, onClick, onWorn }) {
   const colors   = parseJson(item.colors)
-  const [timesWorn, setTimesWorn] = useState(item.times_worn ?? 0)
-  const [marking, setMarking]     = useState(false)
-  const [wornFlash, setWornFlash] = useState(false)
+  const [timesWorn, setTimesWorn]       = useState(item.times_worn ?? 0)
+  const [lastWornDate, setLastWornDate] = useState(item.last_worn_date ?? null)
+  const [marking, setMarking]           = useState(false)
+  const [wornFlash, setWornFlash]       = useState(false)
   const { toast } = useToast()
+
+  const daysAgo   = getDaysAgo(lastWornDate)
+  const isUnworn  = timesWorn === 0
+  const isStale   = !isUnworn && daysAgo !== null && daysAgo >= 30
+  const showAlert = isUnworn || isStale
 
   useEffect(() => {
     if (!wornFlash) return
@@ -29,6 +42,7 @@ export default function ItemCard({ item, onClick, onWorn }) {
     try {
       const { data } = await axios.post(`${API_URL}/items/${item.id}/worn`)
       setTimesWorn(data.times_worn)
+      setLastWornDate(data.last_worn_date ?? new Date().toISOString())
       setWornFlash(true)
       onWorn && onWorn(item.id, data.times_worn)
       toast({ message: `Marked worn — ${data.times_worn}× total`, type: 'success', duration: 2500 })
@@ -38,6 +52,8 @@ export default function ItemCard({ item, onClick, onWorn }) {
       setMarking(false)
     }
   }
+
+  const categoryIcon = CATEGORY_ICONS[item.category] ?? CATEGORY_ICONS.other
 
   return (
     <motion.div
@@ -89,6 +105,32 @@ export default function ItemCard({ item, onClick, onWorn }) {
             {timesWorn}×
           </motion.span>
         )}
+
+        {/* Unworn / stale badge — subtle heartbeat pulse draws attention */}
+        {showAlert && (
+          <motion.span
+            animate={{ scale: [1, 1.04, 1] }}
+            transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
+            className="absolute top-2 right-2 flex items-center gap-0.5 text-[8px] font-semibold px-1.5 py-0.5 rounded-full"
+            style={{
+              backgroundColor: 'rgba(251,184,70,0.18)',
+              color: 'var(--warning)',
+              border: '1px solid rgba(251,184,70,0.35)',
+              letterSpacing: '0.04em',
+            }}
+          >
+            <AlertCircle size={8} />
+            {isUnworn ? 'New' : '30d+'}
+          </motion.span>
+        )}
+
+        {/* Category icon — bottom-right corner, subtle overlay */}
+        <div
+          className="absolute bottom-8 right-2 pointer-events-none"
+          style={{ color: 'rgba(200,169,126,0.45)' }}
+        >
+          <Icon icon={categoryIcon} width={16} height={16} />
+        </div>
 
         {/* Category label — bottom gradient overlay, visible on hover */}
         <div
@@ -144,6 +186,20 @@ export default function ItemCard({ item, onClick, onWorn }) {
           <p className="text-[10px] mt-0.5 truncate" style={{ color: 'rgba(107,101,96,0.65)' }}>
             {item.brand}
           </p>
+        )}
+
+        {/* Last worn date — subtle, slides in on mount */}
+        {daysAgo !== null && (
+          <motion.p
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.25 }}
+            className="flex items-center gap-1 text-[9px] mt-0.5"
+            style={{ color: 'rgba(200,169,126,0.55)' }}
+          >
+            <Clock size={8} />
+            {daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${daysAgo}d ago`}
+          </motion.p>
         )}
       </div>
     </motion.div>

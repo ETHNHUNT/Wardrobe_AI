@@ -252,7 +252,7 @@ export default function ItemDetailModal({ item, onClose, onDeleted, onUpdated })
           const gm = parseJson(item.garment_measurements ?? '{}', {})
           const entries = Object.entries(gm).filter(([, v]) => v != null && v !== '')
           if (entries.length === 0) return null
-          const LABELS = { chest_width_cm: 'Chest', body_length_cm: 'Length', sleeve_cm: 'Sleeve', waist_cm: 'Waist', inseam_cm: 'Inseam' }
+          const LABELS = { chest_width_cm: 'Chest', body_length_cm: 'Length', sleeve_cm: 'Sleeve', waist_cm: 'Waist', inseam_cm: 'Inseam', shoulder_width_cm: 'Shoulder' }
           return (
             <div className="mx-5 mb-4 rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
               <div className="px-3 py-2 flex items-center gap-1.5" style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
@@ -399,6 +399,8 @@ export default function ItemDetailModal({ item, onClose, onDeleted, onUpdated })
                     { key: 'body_length_cm', label: 'Body Length' },
                     { key: 'sleeve_cm',      label: 'Sleeve' },
                     { key: 'waist_cm',       label: 'Waist/Hip' },
+                    { key: 'inseam_cm',      label: 'Inseam' },
+                    { key: 'shoulder_width_cm', label: 'Shoulder' },
                   ].map(({ key, label }) => (
                     <div key={key}>
                       <label className="block text-[10px] uppercase tracking-wider mb-1" style={{ color: 'rgba(107,101,96,0.6)' }}>{label}</label>

@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, Sun, Clock, CheckCircle2 } from 'lucide-react'
+import { Sparkles, Sun, Clock, CheckCircle2, CalendarDays, Zap } from 'lucide-react'
 import { gsap } from 'gsap'
 import axios from 'axios'
 import OutfitCard from '../components/OutfitCard'
 import OutfitGallery from '../components/OutfitGallery'
+import QuickWearModal from '../components/QuickWearModal'
 import { OCCASIONS, SEASONS } from '../lib/constants'
 
 const API_URL = import.meta.env.VITE_API_URL
@@ -45,11 +46,32 @@ export default function OutfitBuilder() {
   const [nameInputs, setNameInputs]   = useState({})     // {outfit_id: string}
   const [wornLoading, setWornLoading] = useState(null)   // outfit_id being marked
   const historyRef = useRef(null)
+  // Enhancement: week plan
+  const [weekPlan, setWeekPlan]           = useState([])
+  const [weekGenerating, setWeekGenerating] = useState(false)
+  const [weekError, setWeekError]         = useState('')
+  const weekCardsRef = useRef(null)
+  // Enhancement: quick wear modal
+  const [quickWearOpen, setQuickWearOpen] = useState(false)
 
   useEffect(() => {
     if (tab === 'saved') fetchSaved()
     if (tab === 'history') fetchHistory()
   }, [tab, occasion, season]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // GSAP stagger for week plan day cards — horizontal stagger matches QuickWearModal items
+  useEffect(() => {
+    if (!weekGenerating && weekPlan.length && weekCardsRef.current) {
+      const cards = weekCardsRef.current.querySelectorAll('.week-day-card')
+      if (cards.length) {
+        gsap.fromTo(
+          cards,
+          { y: -8, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.32, stagger: 0.07, ease: 'power2.out', clearProps: 'all' }
+        )
+      }
+    }
+  }, [weekGenerating, weekPlan])
 
   // GSAP stagger on history list
   useEffect(() => {
@@ -178,6 +200,42 @@ export default function OutfitBuilder() {
     }
   }
 
+  async function handleGenerateWeek() {
+    setWeekGenerating(true)
+    setWeekError('')
+    setWeekPlan([])
+    try {
+      const { data } = await axios.post(`${API_URL}/outfits/generate-week`, { week_context: 'typical work week' })
+      setWeekPlan(data.days ?? [])
+      if ((data.days ?? []).length === 0) {
+        setWeekError('AI returned no week plan. Add more items to your wardrobe first.')
+      }
+    } catch (err) {
+      const msg = err.response?.data?.detail ?? 'Week plan generation failed. Is Ollama or Gemini configured?'
+      setWeekError(msg)
+    } finally {
+      setWeekGenerating(false)
+    }
+  }
+
+  async function handleSaveAllWeek() {
+    try {
+      for (const day of weekPlan) {
+        if (day.item_ids?.length) {
+          await axios.post(`${API_URL}/outfits`, {
+            item_ids: day.item_ids,
+            occasion: day.occasion,
+            name: day.day,
+          })
+        }
+      }
+      setWeekPlan([])
+      setTab('saved')
+    } catch {
+      setWeekError('Failed to save some outfits.')
+    }
+  }
+
   async function handleDelete(outfitId) {
     try {
       await axios.delete(`${API_URL}/outfits/${outfitId}`)
@@ -244,15 +302,16 @@ export default function OutfitBuilder() {
           {[
             { id: 'generate', label: 'Generate' },
             { id: 'saved', label: 'Saved' },
+            { id: 'week', label: 'Week', icon: CalendarDays },
             { id: 'history', label: 'History', icon: Clock },
-          ].map(({ id: t, label, icon: Icon }) => (
+          ].map(({ id: t, label, icon: TabIcon }) => (
             <div key={t} className="relative flex-1">
               <button
                 onClick={() => setTab(t)}
                 className="relative w-full py-2.5 text-xs font-medium z-10 transition-colors duration-200 flex items-center justify-center gap-1"
                 style={{ color: tab === t ? '#0C0C0C' : 'var(--text-muted)' }}
               >
-                {Icon && <Icon size={11} strokeWidth={2} />}
+                {TabIcon && <TabIcon size={11} strokeWidth={2} />}
                 {label}
               </button>
               {tab === t && (
@@ -337,6 +396,100 @@ export default function OutfitBuilder() {
           </motion.div>
         )}
 
+        {/* ── Week tab — GSAP stagger on day cards ── */}
+        {tab === 'week' && (
+          <motion.div key="week" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.22 }}
+            className="px-5 space-y-4">
+            <motion.button
+              onClick={handleGenerateWeek}
+              disabled={weekGenerating}
+              whileTap={{ scale: 0.97 }}
+              className="w-full py-4 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2.5 disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg, #C8A97E 0%, #9A7A52 100%)', color: '#0C0C0C' }}
+            >
+              {weekGenerating ? (
+                <>
+                  <span className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin"
+                    style={{ borderColor: '#0C0C0C', borderTopColor: 'transparent' }} />
+                  Planning your week… (up to 40s)
+                </>
+              ) : (
+                <>
+                  <CalendarDays size={16} strokeWidth={2} />
+                  Plan My Week
+                </>
+              )}
+            </motion.button>
+
+            {weekError && (
+              <div className="p-3.5 rounded-2xl text-xs" style={{ backgroundColor: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)', color: '#F87171' }}>
+                {weekError}
+              </div>
+            )}
+
+            {weekPlan.length === 0 && !weekGenerating && !weekError && (
+              <div className="text-center py-16">
+                <CalendarDays size={40} strokeWidth={1} style={{ color: 'var(--text-muted)', opacity: 0.3, margin: '0 auto 16px' }} />
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                  AI plans Mon–Fri work outfits<br />+ Sat–Sun casual looks.
+                </p>
+              </div>
+            )}
+
+            {weekPlan.length > 0 && (
+              <>
+                <div ref={weekCardsRef} className="space-y-3">
+                  {weekPlan.map((day) => (
+                    <div key={day.day} className="week-day-card rounded-2xl p-4"
+                      style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>{day.day}</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full capitalize"
+                            style={{ backgroundColor: 'rgba(200,169,126,0.08)', color: 'var(--text-muted)', border: '1px solid rgba(200,169,126,0.15)' }}>
+                            {day.occasion}
+                          </span>
+                        </div>
+                        <span className="text-[9px]" style={{ color: 'var(--text-muted)' }}>
+                          {day.items?.length ?? 0} items
+                        </span>
+                      </div>
+                      <div className="flex gap-2 overflow-x-auto mb-2.5" style={{ scrollbarWidth: 'none' }}>
+                        {(day.items ?? []).map((item) => (
+                          <div key={item.id} className="flex-shrink-0 w-14 rounded-xl overflow-hidden"
+                            style={{ height: 72, border: '1px solid rgba(255,255,255,0.07)', backgroundColor: '#0f0f0f' }}>
+                            {item.photo_path && item.photo_path !== 'tmp' ? (
+                              <img src={`${API_URL}/images/${item.photo_path}`} alt={item.category}
+                                className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-[10px]"
+                                style={{ color: 'var(--text-muted)' }}>
+                                {item.category?.[0]?.toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      {day.reason && (
+                        <p className="text-[10px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>{day.reason}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <motion.button
+                  onClick={handleSaveAllWeek}
+                  whileTap={{ scale: 0.97 }}
+                  className="w-full py-3.5 rounded-2xl text-sm font-medium flex items-center justify-center gap-2"
+                  style={{ border: '1px solid rgba(200,169,126,0.35)', color: 'var(--accent)', backgroundColor: 'var(--accent-soft)' }}
+                >
+                  <CheckCircle2 size={14} strokeWidth={2} />
+                  Save All 7 Outfits
+                </motion.button>
+              </>
+            )}
+          </motion.div>
+        )}
+
         {/* ── History tab — GSAP stagger on list ── */}
         {tab === 'history' && (
           <motion.div key="history" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.22 }}
@@ -408,6 +561,29 @@ export default function OutfitBuilder() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── Quick Wear FAB — "Log Today's Wear" ── */}
+      <motion.button
+        onClick={() => setQuickWearOpen(true)}
+        whileTap={{ scale: 0.9 }}
+        whileHover={{ scale: 1.06 }}
+        title="Log today's wear"
+        className="fixed bottom-24 right-5 z-30 w-12 h-12 rounded-full flex items-center justify-center"
+        style={{
+          background: 'linear-gradient(135deg, #C8A97E 0%, #9A7A52 100%)',
+          boxShadow: '0 4px 20px rgba(200,169,126,0.4)',
+        }}
+      >
+        <Zap size={20} strokeWidth={2.5} color="#0C0C0C" />
+      </motion.button>
+
+      <QuickWearModal
+        isOpen={quickWearOpen}
+        onClose={() => setQuickWearOpen(false)}
+        onLogged={() => {
+          if (tab === 'history') fetchHistory()
+        }}
+      />
     </div>
   )
 }

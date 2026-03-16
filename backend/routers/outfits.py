@@ -8,7 +8,7 @@ from sqlmodel import Session, select
 from database import get_session
 from models.item import ClothingItem
 from models.outfit import SavedOutfit
-from services.ai_service import generate_outfits
+from services.ai_service import generate_outfits, generate_week_outfits
 
 router = APIRouter()
 
@@ -23,6 +23,10 @@ def _parse_ids(raw: str) -> list[int]:
 class GenerateRequest(BaseModel):
     occasion: str
     season: str
+
+
+class WeekPlanRequest(BaseModel):
+    week_context: str = "typical work week"
 
 
 class SaveOutfitRequest(BaseModel):
@@ -93,6 +97,47 @@ async def generate_outfit_suggestions(
             )
 
     return {"occasion": req.occasion, "season": req.season, "suggestions": enriched}
+
+
+@router.post("/outfits/generate-week")
+async def generate_week_plan(
+    req: WeekPlanRequest,
+    session: Session = Depends(get_session),
+):
+    """Generate a 7-day outfit plan. Returns list of day plans with full item objects."""
+    items = session.exec(select(ClothingItem)).all()
+    if len(items) < 2:
+        raise HTTPException(
+            status_code=400,
+            detail="Not enough items in wardrobe for a week plan. Add more items first.",
+        )
+
+    items_as_dicts = [i.model_dump() for i in items]
+    week_suggestions = await generate_week_outfits(items_as_dicts, req.week_context)
+
+    if not week_suggestions:
+        raise HTTPException(
+            status_code=503,
+            detail="AI week plan generation failed. Start Ollama or set GEMINI_API_KEY to enable AI features.",
+        )
+
+    item_map = {i.id: i.model_dump() for i in items}
+    enriched = []
+    for day_plan in week_suggestions:
+        resolved_items = [
+            item_map[iid]
+            for iid in day_plan.get("items", [])
+            if iid in item_map
+        ]
+        enriched.append({
+            "day": day_plan.get("day", ""),
+            "occasion": day_plan.get("occasion", "casual"),
+            "items": resolved_items,
+            "item_ids": [i["id"] for i in resolved_items],
+            "reason": day_plan.get("reason", ""),
+        })
+
+    return {"week_context": req.week_context, "days": enriched}
 
 
 @router.get("/outfits")
@@ -188,10 +233,12 @@ def mark_outfit_worn(outfit_id: int, session: Session = Depends(get_session)):
     except json.JSONDecodeError:
         item_ids = []
 
+    _now = datetime.now(timezone.utc).isoformat()
     for iid in item_ids:
         item = session.get(ClothingItem, iid)
         if item:
             item.times_worn = (item.times_worn or 0) + 1
+            item.last_worn_date = _now
             session.add(item)
 
     session.add(outfit)
