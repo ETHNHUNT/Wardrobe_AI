@@ -24,6 +24,15 @@ def _parse_ids(raw: str) -> list[int]:
         return []
 
 
+def _parse_item_colors(item: dict) -> list[str]:
+    """Safely extract colors list from an item dict (handles str or list)."""
+    try:
+        val = item.get("colors", "[]")
+        return json.loads(val) if isinstance(val, str) else val
+    except (json.JSONDecodeError, TypeError):
+        return []
+
+
 class GenerateRequest(BaseModel):
     occasion: str
     season: str
@@ -73,12 +82,7 @@ async def generate_outfit_suggestions(
         skin_tone_context = get_skin_tone_context_for_ai(profile.skin_tone, profile.undertone)
 
     # Build color harmony hints from Sanzo Wada palette matching
-    _all_colors = []
-    for itm in items_as_dicts:
-        try:
-            _all_colors.extend(json.loads(itm.get("colors", "[]")) if isinstance(itm.get("colors"), str) else itm.get("colors", []))
-        except (json.JSONDecodeError, TypeError):
-            pass
+    _all_colors = [c for itm in items_as_dicts for c in _parse_item_colors(itm)]
     harmony_hints = list(set(_all_colors))[:10] if _all_colors else None
 
     # Build wear frequency map for variety
@@ -133,12 +137,7 @@ async def generate_outfit_suggestions(
             continue
 
         # Compute color harmony score for this outfit
-        outfit_colors = []
-        for itm in resolved_items:
-            try:
-                outfit_colors.extend(json.loads(itm.get("colors", "[]")) if isinstance(itm.get("colors"), str) else itm.get("colors", []))
-            except (json.JSONDecodeError, TypeError):
-                pass
+        outfit_colors = [c for itm in resolved_items for c in _parse_item_colors(itm)]
         harmony_score = get_palette_harmony_score(outfit_colors) if outfit_colors else 0.0
 
         enriched.append(

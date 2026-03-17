@@ -33,9 +33,9 @@ function StarRating({ rating, outfitId, onRate, disabled }) {
             disabled={disabled}
             onClick={() => handleClick(star)}
             className="transition-colors duration-150 disabled:cursor-default"
-            style={{ color: filled ? '#C8A97E' : 'rgba(255,255,255,0.15)' }}
+            style={{ color: filled ? 'var(--accent)' : 'rgba(255,255,255,0.15)' }}
           >
-            <Star size={15} fill={filled ? '#C8A97E' : 'none'} strokeWidth={1.5} />
+            <Star size={15} fill={filled ? 'var(--accent)' : 'none'} strokeWidth={1.5} />
           </button>
         )
       })}
@@ -180,8 +180,8 @@ export default function OutfitCard({ outfit, onSave, onRate, onDelete, isSaved }
                     )}
                     {outfit.styling_tips?.length > 0 && (
                       <ul className="space-y-1">
-                        {outfit.styling_tips.map((tip, i) => (
-                          <li key={i} className="flex items-start gap-1.5 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                        {outfit.styling_tips.map((tip) => (
+                          <li key={tip} className="flex items-start gap-1.5 text-[10px]" style={{ color: 'var(--text-muted)' }}>
                             <CheckCircle2 size={11} strokeWidth={2} className="mt-0.5 shrink-0" style={{ color: 'var(--accent)' }} />
                             {tip}
                           </li>
@@ -238,10 +238,7 @@ export default function OutfitCard({ outfit, onSave, onRate, onDelete, isSaved }
             <motion.button
               whileTap={{ scale: 0.88 }}
               onClick={() => onDelete && onDelete(outfit.id)}
-              className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg transition-colors duration-150"
-              style={{ color: 'rgba(248,113,113,0.5)' }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = '#F87171')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(248,113,113,0.5)')}
+              className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg transition-colors duration-150 text-[#F87171]/50 hover:text-[#F87171]"
             >
               <Trash2 size={12} strokeWidth={1.75} />
             </motion.button>

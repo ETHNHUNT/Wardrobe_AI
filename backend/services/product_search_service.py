@@ -74,7 +74,7 @@ async def search_product_online(
 
         data = resp.json()
 
-        product_url = data.get("AbstractURL") or None
+        product_url = data.get("AbstractURL")
         description = data.get("AbstractText") or ""
 
         # If AbstractText is empty, try first RelatedTopic text

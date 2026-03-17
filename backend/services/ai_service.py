@@ -410,13 +410,16 @@ Return ONLY JSON:
     return {"gaps": [], "coverage_score": {}}
 
 
+# ── Category sets (shared with shopping_service) ─────────────────────────────
+
+TOPS_CATEGORIES: frozenset[str] = frozenset({"tshirt", "shirt", "polo", "jacket", "hoodie", "sweater", "blazer", "coat", "top"})
+BOTTOMS_CATEGORIES: frozenset[str] = frozenset({"jeans", "chinos", "trousers", "shorts"})
+SHOES_CATEGORIES: frozenset[str] = frozenset({"shoes", "sneakers", "boots", "formal_shoes"})
+
+
 # ── Outfit validation ────────────────────────────────────────────────────────
-
-_TOPS_SET = {"tshirt", "shirt", "polo", "jacket", "hoodie", "sweater", "blazer", "coat", "top"}
-_BOTTOMS_SET = {"jeans", "chinos", "trousers", "shorts"}
-
 
 def validate_outfit(item_ids: list[int], item_map: dict[int, dict]) -> bool:
     """Ensure outfit has at least one top and one bottom."""
     categories = {item_map[iid].get("category", "other") for iid in item_ids if iid in item_map}
-    return bool(categories & _TOPS_SET) and bool(categories & _BOTTOMS_SET)
+    return bool(categories & TOPS_CATEGORIES) and bool(categories & BOTTOMS_CATEGORIES)

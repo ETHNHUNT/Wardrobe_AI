@@ -1,12 +1,9 @@
 import json
 from urllib.parse import quote_plus
 from services.compatibility_service import score_item_compatibility, build_candidate_from_gap_item
+from services.ai_service import TOPS_CATEGORIES as _TOPS_CAT, BOTTOMS_CATEGORIES as _BOTTOMS_CAT, SHOES_CATEGORIES as _SHOES_CAT
 
 OCCASIONS = ["casual", "work", "formal", "sport", "outdoor"]
-
-_TOPS_CAT = {"tshirt", "shirt", "polo", "jacket", "hoodie", "sweater", "blazer", "coat", "top"}
-_BOTTOMS_CAT = {"jeans", "chinos", "trousers", "shorts"}
-_SHOES_CAT = {"shoes", "sneakers", "boots", "formal_shoes"}
 
 # Size thresholds for tops (chest_cm) and bottoms (waist_cm)
 _SIZE_THRESHOLDS = [

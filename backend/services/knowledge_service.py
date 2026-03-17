@@ -124,6 +124,17 @@ def get_trends(season: str | None = None) -> dict:
 
 # ── Occasion rules ────────────────────────────────────────────────────────────
 
+def get_all_shoe_pairings_for_category(category: str) -> dict:
+    """Return all shoe pairing variants (keyed by fit_type) for a bottom category.
+
+    e.g. category='jeans' → {"slim": [...], "regular": [...], "default": [...]}
+    Returns {} if category not found or knowledge base is unavailable.
+    """
+    if not _KNOWLEDGE or not category:
+        return {}
+    return _KNOWLEDGE.get("shoe_pairings", {}).get(category, {})
+
+
 def get_occasion_rules(occasion: str) -> dict | None:
     """Return occasion dressing rules or None if occasion not found."""
     return _KNOWLEDGE.get("occasion_rules", {}).get(occasion)

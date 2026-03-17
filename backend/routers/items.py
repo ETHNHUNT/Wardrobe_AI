@@ -285,12 +285,9 @@ def update_item(item_id: int, data: ClothingItemUpdate, session: Session = Depen
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    _LIST_FIELDS = {"colors", "tags", "occasions", "seasons"}
-    _JSON_DICT_FIELDS = {"garment_measurements"}
+    _JSON_FIELDS = {"colors", "tags", "occasions", "seasons", "garment_measurements"}
     for field, value in data.model_dump(exclude_none=True).items():
-        if field in _LIST_FIELDS:
-            setattr(item, field, json.dumps(value))
-        elif field in _JSON_DICT_FIELDS:
+        if field in _JSON_FIELDS:
             setattr(item, field, json.dumps(value))
         else:
             setattr(item, field, value)

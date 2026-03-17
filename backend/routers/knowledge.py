@@ -16,10 +16,12 @@ from sqlmodel import Session
 
 from database import get_session
 from models.user import UserProfile
+from services.ai_service import _ollama_text, _gemini_text, parse_ai_json, gemini_available
 from services.knowledge_service import (
     get_trends,
     get_style_rules,
     get_shoe_pairings,
+    get_all_shoe_pairings_for_category,
     get_occasion_rules,
     get_fabric_properties,
 )
@@ -27,6 +29,9 @@ from services.size_chart_service import (
     get_size_chart,
     recommend_size,
     get_available_brands,
+    _CHARTS,
+    _DATA,
+    _DATA_PATH,
 )
 
 logger = logging.getLogger("wardrobeai.knowledge")
@@ -61,13 +66,7 @@ def knowledge_style_guide(
     categories = [category] if category else None
     rules = get_style_rules(categories)
 
-    shoe_data = {}
-    if category:
-        # Show all fit variants for this category via fit_shoe_matrix
-        from services.knowledge_service import _KNOWLEDGE as _K
-        shoe_pairings_raw = _K.get("shoe_pairings", {})
-        if category in shoe_pairings_raw:
-            shoe_data = shoe_pairings_raw[category]
+    shoe_data = get_all_shoe_pairings_for_category(category) if category else {}
 
     occasion_data = get_occasion_rules(occasion) if occasion else None
 
@@ -146,9 +145,6 @@ async def fetch_brand_size_chart(brand: str):
 
     This is best-effort — AI size data should be verified against the brand's official site.
     """
-    from services.ai_service import _ollama_text, _gemini_text, parse_ai_json, gemini_available
-    from services.size_chart_service import _CHARTS, _DATA, _DATA_PATH
-
     if not brand or len(brand) < 2:
         raise HTTPException(status_code=400, detail="Brand name too short")
 
