@@ -12,7 +12,7 @@ from models.user import UserProfile
 from services.ai_service import generate_outfits, generate_week_outfits, validate_outfit
 from services.skin_tone_service import get_skin_tone_context_for_ai
 from services.color_service import get_palette_harmony_score
-from services.knowledge_service import get_shoe_pairing_context_for_ai, get_trend_context_for_ai
+from services.knowledge_service import get_shoe_pairing_context_for_ai, get_trend_context_for_ai, get_style_rules_for_ai
 
 router = APIRouter()
 
@@ -101,6 +101,7 @@ async def generate_outfit_suggestions(
     fit_types = [i.get("fit_type") for i in items_as_dicts if i.get("fit_type")]
     shoe_pairing_context = get_shoe_pairing_context_for_ai(bottom_categories, fit_types) or None
     trend_context = get_trend_context_for_ai(req.season) or None
+    style_rules_context = get_style_rules_for_ai() or None
 
     suggestions = await generate_outfits(
         items_as_dicts, req.occasion, req.season,
@@ -110,6 +111,7 @@ async def generate_outfit_suggestions(
         wear_frequency=wear_freq,
         shoe_pairing_context=shoe_pairing_context,
         trend_context=trend_context,
+        style_rules_context=style_rules_context,
     )
 
     if not suggestions:
@@ -144,6 +146,8 @@ async def generate_outfit_suggestions(
                 "items": resolved_items,
                 "item_ids": [i["id"] for i in resolved_items],
                 "reason": suggestion.get("reason", ""),
+                "styling_tips": suggestion.get("styling_tips") or [],
+                "color_reason": suggestion.get("color_reason") or None,
                 "harmony_score": round(harmony_score, 2),
                 "shoe_recommendation": suggestion.get("shoe_recommendation") or None,
                 "trend_tags": suggestion.get("trend_tags") or [],

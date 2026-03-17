@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { gsap } from 'gsap'
-import { RefreshCw, ExternalLink, TrendingUp, AlertTriangle, Palette } from 'lucide-react'
+import { RefreshCw, ExternalLink, TrendingUp, AlertTriangle, Palette, Sparkles, ChevronDown } from 'lucide-react'
 import axios from 'axios'
 import { getColorCSS } from '../lib/colors'
 import { OCCASIONS, INPUT_STYLE } from '../lib/constants'
@@ -66,7 +66,8 @@ export default function Shop() {
   const [sugError, setSugError]     = useState(null)
 
   const [paletteData, setPaletteData] = useState(null)
-  const [expandedIdx, setExpandedIdx] = useState(null)  // which suggestion's "Why this?" is open
+  const [expandedIdx, setExpandedIdx] = useState(null)      // which suggestion's "See matches" is open
+  const [outfitIdeasIdx, setOutfitIdeasIdx] = useState(null) // which suggestion's "Outfit Ideas" is open
 
   useEffect(() => {
     fetchGaps()
@@ -469,6 +470,75 @@ export default function Shop() {
                                       style={{ color: 'var(--text-muted)' }}>
                                       {mi.brand || mi.category}
                                     </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
+
+                    {/* Outfit Ideas — how to wear this new item with existing wardrobe */}
+                    {(s.outfit_ideas?.length ?? 0) > 0 && (
+                      <div className="mb-3">
+                        <motion.button
+                          onClick={() => setOutfitIdeasIdx(outfitIdeasIdx === i ? null : i)}
+                          whileTap={{ scale: 0.97 }}
+                          className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider"
+                          style={{ color: 'var(--accent)' }}
+                        >
+                          <Sparkles size={11} strokeWidth={2} />
+                          Wear it as
+                          <motion.span
+                            animate={{ rotate: outfitIdeasIdx === i ? 180 : 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="inline-block"
+                          >
+                            <ChevronDown size={11} strokeWidth={2} />
+                          </motion.span>
+                        </motion.button>
+
+                        <AnimatePresence>
+                          {outfitIdeasIdx === i && (
+                            <motion.div
+                              key="outfit-ideas"
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.25 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="pt-2 space-y-2">
+                                {s.outfit_ideas.map((idea, j) => (
+                                  <div key={j}
+                                    className="rounded-xl p-2.5 flex items-center gap-2.5"
+                                    style={{ backgroundColor: 'rgba(200,169,126,0.04)', border: '1px solid rgba(200,169,126,0.1)' }}
+                                  >
+                                    <div className="flex gap-1.5 shrink-0">
+                                      {(idea.items ?? []).slice(0, 3).map((mi) => (
+                                        <div key={mi.id}
+                                          className="w-10 h-14 rounded-lg overflow-hidden shrink-0"
+                                          style={{ border: '1px solid rgba(255,255,255,0.08)' }}
+                                        >
+                                          {mi.photo_path ? (
+                                            <img
+                                              src={`${API}/images/${mi.photo_path}`}
+                                              alt={mi.category}
+                                              className="w-full h-full object-cover"
+                                            />
+                                          ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-[10px]"
+                                              style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
+                                              {mi.category?.[0]?.toUpperCase()}
+                                            </div>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                    <p className="text-[10px] leading-snug" style={{ color: 'var(--text-muted)' }}>
+                                      {idea.description}
+                                    </p>
                                   </div>
                                 ))}
                               </div>

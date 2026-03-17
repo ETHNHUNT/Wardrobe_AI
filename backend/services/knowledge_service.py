@@ -166,6 +166,21 @@ def get_shoe_pairing_context_for_ai(
     return "\n".join(lines) if len(lines) > 1 else ""
 
 
+def get_style_rules_for_ai() -> str:
+    """Return style rules as a concise natural-language block for AI outfit prompts.
+
+    e.g. "Style rules: Pair fitted top with relaxed bottoms. One patterned piece per outfit..."
+    Returns "" if no data.
+    """
+    rules = get_style_rules()
+    if not rules:
+        return ""
+    rule_lines = [r.get("rule", "") for r in rules if r.get("rule")]
+    if not rule_lines:
+        return ""
+    return "Style rules to apply: " + " | ".join(rule_lines[:6])
+
+
 def get_trend_context_for_ai(season: str) -> str:
     """Return a short natural-language trend summary for AI outfit generation prompts.
 
