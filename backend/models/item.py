@@ -21,3 +21,6 @@ class ClothingItem(SQLModel, table=True):
     material: str | None = None       # e.g. "100% cotton" or "98% cotton 2% elastane"
     # Iteration 7: track when item was last worn (ISO-8601 string)
     last_worn_date: str | None = None
+    # Iteration 9: online product lookup result
+    product_url: str | None = None
+    source_description: str | None = None

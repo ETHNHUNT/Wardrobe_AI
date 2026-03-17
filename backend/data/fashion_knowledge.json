@@ -1,0 +1,261 @@
+{
+  "version": "1.0",
+  "shoe_pairings": {
+    "jeans": {
+      "oversized":    ["chunky sneakers", "high-top boots", "platform sneakers"],
+      "relaxed":      ["chunky sneakers", "boots", "wide-fit sneakers", "high-tops"],
+      "regular":      ["white sneakers", "loafers", "chelsea boots", "clean sneakers"],
+      "slim":         ["slim sneakers", "loafers", "chelsea boots", "pointed boots"],
+      "default":      ["white sneakers", "loafers", "boots"]
+    },
+    "chinos": {
+      "slim":         ["loafers", "desert boots", "white sneakers", "derbies"],
+      "regular":      ["loafers", "sneakers", "chelsea boots", "brogues"],
+      "relaxed":      ["chunky sneakers", "boots", "loafers"],
+      "default":      ["loafers", "white sneakers", "chelsea boots"]
+    },
+    "trousers": {
+      "slim":         ["oxford shoes", "derby shoes", "loafers", "chelsea boots"],
+      "regular":      ["oxford shoes", "derby shoes", "chelsea boots", "brogues"],
+      "relaxed":      ["loafers", "chunky sneakers", "boots"],
+      "default":      ["oxford shoes", "loafers", "chelsea boots"]
+    },
+    "shorts": {
+      "default":      ["sandals", "white sneakers", "slip-ons", "espadrilles"]
+    },
+    "formal_wear": {
+      "default":      ["oxford shoes", "derby shoes", "monk straps"]
+    }
+  },
+  "fit_shoe_matrix": {
+    "oversized":  ["chunky sneakers", "high-top boots", "thick-sole loafers", "platform sneakers"],
+    "relaxed":    ["chunky sneakers", "boots", "wide-fit sneakers", "high-tops"],
+    "regular":    ["white sneakers", "loafers", "chelsea boots", "clean runners"],
+    "slim":       ["slim sneakers", "loafers", "derbies", "pointed-toe boots", "chelsea boots"]
+  },
+  "fabric_properties": {
+    "cotton": {
+      "breathability": "high",
+      "stretch": "low",
+      "seasons": ["spring", "summer"],
+      "occasions": ["casual", "work"],
+      "care": "Machine wash cold, tumble dry low",
+      "formality": "casual to smart-casual"
+    },
+    "linen": {
+      "breathability": "very high",
+      "stretch": "low",
+      "seasons": ["spring", "summer"],
+      "occasions": ["casual", "outdoor", "work"],
+      "care": "Machine wash cold, air dry, expect wrinkles",
+      "formality": "casual to smart-casual"
+    },
+    "wool": {
+      "breathability": "medium",
+      "stretch": "low",
+      "seasons": ["fall", "winter"],
+      "occasions": ["work", "formal"],
+      "care": "Dry clean or hand wash cold",
+      "formality": "smart-casual to formal"
+    },
+    "polyester": {
+      "breathability": "low",
+      "stretch": "medium",
+      "seasons": ["fall", "winter", "spring"],
+      "occasions": ["casual", "sport"],
+      "care": "Machine wash warm, tumble dry low",
+      "formality": "casual"
+    },
+    "denim": {
+      "breathability": "medium",
+      "stretch": "low",
+      "seasons": ["spring", "fall", "winter"],
+      "occasions": ["casual", "outdoor"],
+      "care": "Machine wash cold inside out, air dry",
+      "formality": "casual to smart-casual"
+    },
+    "silk": {
+      "breathability": "medium",
+      "stretch": "low",
+      "seasons": ["spring", "summer"],
+      "occasions": ["formal", "work"],
+      "care": "Dry clean or hand wash cold, do not wring",
+      "formality": "smart-casual to formal"
+    },
+    "cashmere": {
+      "breathability": "high",
+      "stretch": "low",
+      "seasons": ["fall", "winter"],
+      "occasions": ["work", "formal", "casual"],
+      "care": "Dry clean or hand wash cold, lay flat to dry",
+      "formality": "smart-casual to formal"
+    },
+    "nylon": {
+      "breathability": "low",
+      "stretch": "high",
+      "seasons": ["spring", "summer", "fall"],
+      "occasions": ["sport", "outdoor"],
+      "care": "Machine wash cold, air dry",
+      "formality": "casual to sport"
+    },
+    "elastane": {
+      "breathability": "low",
+      "stretch": "very high",
+      "seasons": ["spring", "summer", "fall", "winter"],
+      "occasions": ["sport", "casual"],
+      "care": "Machine wash cold, air dry",
+      "formality": "sport to casual"
+    },
+    "viscose": {
+      "breathability": "high",
+      "stretch": "medium",
+      "seasons": ["spring", "summer"],
+      "occasions": ["casual", "work"],
+      "care": "Hand wash or dry clean, do not wring",
+      "formality": "casual to smart-casual"
+    }
+  },
+  "style_rules": [
+    {
+      "id": "fit_proportion",
+      "title": "Fit proportion balance",
+      "rule": "Pair a fitted top with relaxed bottoms, or vice versa. Avoid two oversized pieces together — the look becomes shapeless.",
+      "categories": []
+    },
+    {
+      "id": "chunky_with_baggy",
+      "title": "Chunky shoes with baggy silhouettes",
+      "rule": "Baggy or oversized silhouettes need visual weight at the feet. Chunky sneakers, boots, or platform shoes balance the proportions. Slim shoes with wide fits look unfinished.",
+      "categories": ["jeans", "trousers", "hoodie", "jacket"]
+    },
+    {
+      "id": "slim_shoes_with_slim_fit",
+      "title": "Slim shoes with slim/tapered fits",
+      "rule": "Slim tapered trousers and jeans work best with slim-profile shoes: clean white sneakers, loafers, derbies, or sleek chelsea boots. Chunky shoes overwhelm slim silhouettes.",
+      "categories": ["jeans", "chinos", "trousers"]
+    },
+    {
+      "id": "one_pattern",
+      "title": "One pattern at a time",
+      "rule": "When wearing a patterned piece (stripes, checks, floral), keep all other items solid. Two patterns together require expert-level skill to pull off.",
+      "categories": []
+    },
+    {
+      "id": "color_thirds",
+      "title": "60-30-10 color rule",
+      "rule": "Build outfits with 60% dominant color (trousers/jeans), 30% secondary (top), 10% accent (shoes/accessories). This creates visual balance without looking too coordinated.",
+      "categories": []
+    },
+    {
+      "id": "black_navy",
+      "title": "Black and navy warning",
+      "rule": "Avoid pairing navy and black in the same outfit — they clash subtly in natural light and look like a mismatch. Use charcoal grey with navy instead.",
+      "categories": ["shirt", "tshirt", "jeans", "trousers"]
+    },
+    {
+      "id": "tuck_fitted",
+      "title": "Tuck fitted tops",
+      "rule": "Fitted shirts and polos look cleaner tucked in with chinos or trousers. Leave tshirts and oversized tops untucked.",
+      "categories": ["shirt", "polo", "chinos", "trousers"]
+    },
+    {
+      "id": "layer_length",
+      "title": "Layering length rule",
+      "rule": "When layering (tshirt under an open shirt or jacket), each layer should be slightly longer than the one on top. A peeking inner layer looks intentional; uneven hems look sloppy.",
+      "categories": ["tshirt", "shirt", "jacket", "hoodie"]
+    }
+  ],
+  "current_trends": {
+    "2026": {
+      "trending": [
+        "relaxed fit",
+        "straight-leg jeans",
+        "baggy jeans",
+        "wide-leg trousers",
+        "chunky sneakers",
+        "boots with everything",
+        "earth tones",
+        "quiet luxury",
+        "oversized outerwear",
+        "cargo details",
+        "soft tailoring",
+        "monochromatic outfits"
+      ],
+      "fading": [
+        "slim tapered jeans",
+        "ultra-skinny fits",
+        "fast-fashion logo overload",
+        "extremely distressed denim",
+        "overly bright neon accents"
+      ],
+      "key_combinations": [
+        "baggy jeans + chunky sneakers + fitted tshirt",
+        "straight trousers + loafers + tucked shirt",
+        "relaxed chinos + white sneakers + overshirt",
+        "wide-leg cargos + chelsea boots + crewneck",
+        "tailored trousers + white tshirt + chunky sneakers"
+      ]
+    }
+  },
+  "seasonal_trends": {
+    "spring_2026": {
+      "key_colors": ["sage green", "sky blue", "warm beige", "coral", "soft lilac"],
+      "key_items": ["linen shirt", "chinos", "loafers", "light jacket", "white sneakers"],
+      "key_fabrics": ["linen", "light cotton", "seersucker"],
+      "avoid": ["heavy wool", "all-black head-to-toe", "thick knits"]
+    },
+    "summer_2026": {
+      "key_colors": ["white", "tan", "terracotta", "cobalt blue", "mint green"],
+      "key_items": ["linen trousers", "polo", "open short-sleeve shirt", "sandals", "shorts"],
+      "key_fabrics": ["linen", "cotton", "viscose"],
+      "avoid": ["dark heavy fabrics", "thick knit", "synthetic fabrics"]
+    },
+    "fall_2026": {
+      "key_colors": ["rust", "camel", "deep green", "burgundy", "warm grey", "brown"],
+      "key_items": ["chinos", "oxford shirt", "leather jacket", "chelsea boots", "overshirt"],
+      "key_fabrics": ["cotton twill", "corduroy", "light wool"],
+      "avoid": ["bright neons", "all-white ensemble", "thin summer fabrics"]
+    },
+    "winter_2026": {
+      "key_colors": ["charcoal", "camel", "forest green", "navy", "cream", "chocolate brown"],
+      "key_items": ["wool coat", "turtleneck sweater", "dark jeans", "boots", "tailored trousers"],
+      "key_fabrics": ["wool", "cashmere", "heavy cotton", "denim"],
+      "avoid": ["thin fabrics alone", "light pastels without layering", "shorts"]
+    }
+  },
+  "occasion_rules": {
+    "work": {
+      "recommended_fit": ["slim", "regular"],
+      "preferred_categories": ["shirt", "chinos", "trousers", "polo", "sweater"],
+      "avoid_categories": ["tshirt", "shorts", "hoodie"],
+      "avoid_patterns": ["graphic prints", "large logos"],
+      "shoe_note": "Avoid sportswear shoes for most offices. Loafers, oxfords, or clean leather sneakers work.",
+      "color_note": "Stick to neutrals and muted tones. Avoid overly bright colors."
+    },
+    "formal": {
+      "recommended_fit": ["slim", "regular"],
+      "preferred_categories": ["shirt", "trousers", "formal_shoes", "blazer"],
+      "required": ["collared top"],
+      "shoe_note": "Oxford or derby shoes required. Clean white sneakers only in smart-casual contexts.",
+      "color_note": "Navy, charcoal, white, and black are safe. Earth tones work for smart-casual."
+    },
+    "casual": {
+      "recommended_fit": ["regular", "relaxed", "oversized"],
+      "preferred_categories": ["tshirt", "jeans", "sneakers", "hoodie", "chinos"],
+      "shoe_note": "Sneakers, loafers, or casual boots all work well.",
+      "color_note": "Express yourself — bolder colors and patterns are welcome."
+    },
+    "sport": {
+      "recommended_fit": ["regular", "slim"],
+      "preferred_categories": ["tshirt", "shorts", "sneakers"],
+      "shoe_note": "Athletic sneakers or running shoes. Match to activity.",
+      "color_note": "Bold colors and technical patterns are fine."
+    },
+    "outdoor": {
+      "recommended_fit": ["regular", "relaxed"],
+      "preferred_categories": ["jacket", "chinos", "boots", "hoodie"],
+      "shoe_note": "Boots or durable sneakers. Avoid dress shoes.",
+      "color_note": "Earth tones blend naturally. Brights add visibility."
+    }
+  }
+}

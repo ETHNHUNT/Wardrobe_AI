@@ -22,12 +22,13 @@ export default function AddItem() {
   const canvasRef     = useRef(null)
   const previewUrlRef = useRef(null)
 
-  const [phase, setPhase]             = useState('idle')
-  const [barcodeInfo, setBarcodeInfo] = useState(null)
-  const [preview, setPreview]         = useState(null)
-  const [photoFile, setPhotoFile]     = useState(null)
-  const [savedItem, setSavedItem]     = useState(null)
-  const [error, setError]             = useState('')
+  const [phase, setPhase]                       = useState('idle')
+  const [barcodeInfo, setBarcodeInfo]           = useState(null)
+  const [preview, setPreview]                   = useState(null)
+  const [photoFile, setPhotoFile]               = useState(null)
+  const [savedItem, setSavedItem]               = useState(null)
+  const [error, setError]                       = useState('')
+  const [onlineLookupResult, setOnlineLookupResult] = useState(null)
   // Iteration 2: label scan mode — camera captures label photo instead of clothing
   const [labelScanMode, setLabelScanMode] = useState(false)
   const [labelScanResult, setLabelScanResult] = useState(null)
@@ -181,7 +182,8 @@ export default function AddItem() {
       })
       setSavedItem(data)
 
-      if (!data.ai_tagged || data.category === 'unknown') {
+      const needsManual = !data.ai_tagged || data.category === 'unknown'
+      if (needsManual) {
         setManualForm((prev) => ({
           ...prev,
           category:   data.category !== 'unknown' ? data.category : '',
@@ -191,9 +193,15 @@ export default function AddItem() {
           occasions:  parseJson(data.occasions),
           seasons:    parseJson(data.seasons),
         }))
-        setPhase('manual_form')
+      }
+
+      // Show online_lookup phase if backend found product data
+      if (data.product_url || data.source_description) {
+        setOnlineLookupResult({ url: data.product_url, description: data.source_description })
+        setPhase('online_lookup')
+        setTimeout(() => setPhase(needsManual ? 'manual_form' : 'done'), 3000)
       } else {
-        setPhase('done')
+        setPhase(needsManual ? 'manual_form' : 'done')
       }
     } catch {
       setError('Upload failed. Make sure the backend is running.')
@@ -285,6 +293,46 @@ export default function AddItem() {
             View Wardrobe
           </motion.button>
         </div>
+      </div>
+    )
+  }
+
+  if (phase === 'online_lookup') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-20" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <div className="absolute top-0 left-0 right-0">
+          <PhaseIndicator phase={phase} />
+        </div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 12 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
+          className="w-full max-w-sm rounded-2xl p-5 mt-16"
+          style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid rgba(200,169,126,0.15)' }}
+        >
+          <p className="text-[10px] tracking-[0.32em] uppercase mb-3" style={{ color: 'var(--accent)' }}>
+            Found Online
+          </p>
+          {onlineLookupResult?.description && (
+            <p className="text-sm leading-relaxed mb-3" style={{ color: 'var(--text-primary)' }}>
+              {onlineLookupResult.description}
+            </p>
+          )}
+          {onlineLookupResult?.url && (
+            <a
+              href={onlineLookupResult.url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-block text-xs underline underline-offset-2 mb-3"
+              style={{ color: 'var(--accent)' }}
+            >
+              View product source ↗
+            </a>
+          )}
+          <p className="text-[10px] mt-2" style={{ color: 'var(--text-muted)' }}>
+            Continuing automatically…
+          </p>
+        </motion.div>
       </div>
     )
   }

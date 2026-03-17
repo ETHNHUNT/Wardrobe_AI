@@ -1,0 +1,93 @@
+{
+  "version": "1.0",
+  "brands": {
+    "Zara": {
+      "source_url": "https://www.zara.com/us/en/z-size-guide-mkt8199.html",
+      "last_updated": "2026-03-17",
+      "region": "US/EU (men)",
+      "tops": {
+        "XS":  {"chest_cm": [84, 88],  "waist_cm": [68, 72]},
+        "S":   {"chest_cm": [88, 92],  "waist_cm": [72, 76]},
+        "M":   {"chest_cm": [92, 96],  "waist_cm": [76, 80]},
+        "L":   {"chest_cm": [96, 104], "waist_cm": [80, 88]},
+        "XL":  {"chest_cm": [104, 112],"waist_cm": [88, 96]},
+        "XXL": {"chest_cm": [112, 120],"waist_cm": [96, 104]}
+      },
+      "bottoms": {
+        "XS":  {"waist_cm": [68, 72],  "hips_cm": [90, 94]},
+        "S":   {"waist_cm": [72, 76],  "hips_cm": [94, 98]},
+        "M":   {"waist_cm": [76, 80],  "hips_cm": [98, 102]},
+        "L":   {"waist_cm": [80, 88],  "hips_cm": [102, 110]},
+        "XL":  {"waist_cm": [88, 96],  "hips_cm": [110, 118]},
+        "XXL": {"waist_cm": [96, 104], "hips_cm": [118, 126]}
+      },
+      "notes": "Zara fits true to size for most body types. Slim-fit styles run one size down."
+    },
+    "Uniqlo": {
+      "source_url": "https://www.uniqlo.com/us/en/size-chart.html",
+      "last_updated": "2026-03-17",
+      "region": "US (men)",
+      "tops": {
+        "XS":  {"chest_cm": [82, 86],  "waist_cm": [66, 70]},
+        "S":   {"chest_cm": [86, 90],  "waist_cm": [70, 74]},
+        "M":   {"chest_cm": [90, 94],  "waist_cm": [74, 78]},
+        "L":   {"chest_cm": [94, 98],  "waist_cm": [78, 82]},
+        "XL":  {"chest_cm": [98, 106], "waist_cm": [82, 90]},
+        "XXL": {"chest_cm": [106, 114],"waist_cm": [90, 98]}
+      },
+      "bottoms": {
+        "XS":  {"waist_cm": [66, 70],  "hips_cm": [88, 92]},
+        "S":   {"waist_cm": [70, 74],  "hips_cm": [92, 96]},
+        "M":   {"waist_cm": [74, 78],  "hips_cm": [96, 100]},
+        "L":   {"waist_cm": [78, 82],  "hips_cm": [100, 104]},
+        "XL":  {"waist_cm": [82, 90],  "hips_cm": [104, 112]},
+        "XXL": {"waist_cm": [90, 98],  "hips_cm": [112, 120]}
+      },
+      "notes": "Uniqlo runs slightly smaller than European brands. When in doubt, size up."
+    },
+    "H&M": {
+      "source_url": "https://www2.hm.com/en_us/customer-service/sizeguide/man.html",
+      "last_updated": "2026-03-17",
+      "region": "US (men)",
+      "tops": {
+        "XS":  {"chest_cm": [82, 87],  "waist_cm": [67, 72]},
+        "S":   {"chest_cm": [87, 92],  "waist_cm": [72, 77]},
+        "M":   {"chest_cm": [92, 97],  "waist_cm": [77, 82]},
+        "L":   {"chest_cm": [97, 102], "waist_cm": [82, 87]},
+        "XL":  {"chest_cm": [102, 110],"waist_cm": [87, 95]},
+        "XXL": {"chest_cm": [110, 118],"waist_cm": [95, 103]}
+      },
+      "bottoms": {
+        "28": {"waist_cm": [68, 73]},
+        "30": {"waist_cm": [73, 78]},
+        "32": {"waist_cm": [78, 83]},
+        "34": {"waist_cm": [83, 89]},
+        "36": {"waist_cm": [89, 95]},
+        "38": {"waist_cm": [95, 102]}
+      },
+      "notes": "H&M fits vary by line. Divided/basics run true to size; premium lines may run small."
+    },
+    "Mango": {
+      "source_url": "https://shop.mango.com/us/men/size-guide",
+      "last_updated": "2026-03-17",
+      "region": "US (men)",
+      "tops": {
+        "XS":  {"chest_cm": [84, 88],  "waist_cm": [69, 73]},
+        "S":   {"chest_cm": [88, 92],  "waist_cm": [73, 77]},
+        "M":   {"chest_cm": [92, 96],  "waist_cm": [77, 81]},
+        "L":   {"chest_cm": [96, 100], "waist_cm": [81, 85]},
+        "XL":  {"chest_cm": [100, 108],"waist_cm": [85, 93]},
+        "XXL": {"chest_cm": [108, 116],"waist_cm": [93, 101]}
+      },
+      "bottoms": {
+        "XS":  {"waist_cm": [70, 74],  "hips_cm": [90, 94]},
+        "S":   {"waist_cm": [74, 78],  "hips_cm": [94, 98]},
+        "M":   {"waist_cm": [78, 82],  "hips_cm": [98, 102]},
+        "L":   {"waist_cm": [82, 90],  "hips_cm": [102, 110]},
+        "XL":  {"waist_cm": [90, 98],  "hips_cm": [110, 118]},
+        "XXL": {"waist_cm": [98, 106], "hips_cm": [118, 126]}
+      },
+      "notes": "Mango cuts are slightly slim. Consider sizing up if between sizes."
+    }
+  }
+}

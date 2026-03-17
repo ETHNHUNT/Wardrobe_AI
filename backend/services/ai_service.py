@@ -232,10 +232,13 @@ async def generate_outfits(
     skin_tone_context: str | None = None,
     color_harmony_hints: list[str] | None = None,
     wear_frequency: dict[int, int] | None = None,
+    shoe_pairing_context: str | None = None,
+    trend_context: str | None = None,
 ) -> list[dict]:
     """
     Generate 3 outfit suggestions via Ollama (primary) or Gemini (fallback).
-    Returns list of {"items": [...], "reason": "..."} dicts, or [] on failure.
+    Returns list of {"items": [...], "reason": "...", "shoe_recommendation": "...", "trend_tags": [...]} dicts,
+    or [] on failure.
     """
     past_context = ""
     if past_outfits:
@@ -255,8 +258,16 @@ async def generate_outfits(
         least_worn = sorted(wear_frequency, key=wear_frequency.get)[:6]
         wear_section = f"\nItems worn least (prefer these for variety): {least_worn}\n"
 
+    shoe_section = ""
+    if shoe_pairing_context:
+        shoe_section = f"\n{shoe_pairing_context}\n"
+
+    trend_section = ""
+    if trend_context:
+        trend_section = f"\nFashion context for {season}: {trend_context}\n"
+
     prompt = f"""You are a personal stylist for an Indian man. Suggest exactly 3 outfits for occasion: {occasion}, season: {season}.
-{skin_section}{past_context}{harmony_section}{wear_section}
+{skin_section}{past_context}{harmony_section}{wear_section}{shoe_section}{trend_section}
 Wardrobe: {json.dumps(_slim_items(items))}
 
 Rules:
@@ -267,12 +278,14 @@ Rules:
 5. {"Prioritize colors that flatter the user's skin tone." if skin_tone_context else "Choose colors that create good contrast."}
 6. Avoid duplicating past outfits exactly.
 7. Vary item usage — prefer least-worn items.
+8. Include shoe_recommendation per outfit: specific shoe type to complete the look (not an item ID from the wardrobe).
+9. Add trend_tags: 1-3 current style trends or keywords this outfit incorporates.
 
 Return ONLY JSON array:
 [
-  {{"items": [1, 3], "reason": "brief note explaining why this works"}},
-  {{"items": [2, 5, 7], "reason": "brief note explaining why this works"}},
-  {{"items": [1, 4, 6], "reason": "brief note explaining why this works"}}
+  {{"items": [1, 3], "reason": "brief note explaining why this works", "shoe_recommendation": "white chunky sneakers", "trend_tags": ["relaxed fit", "earth tones"]}},
+  {{"items": [2, 5, 7], "reason": "brief note explaining why this works", "shoe_recommendation": "loafers", "trend_tags": ["quiet luxury"]}},
+  {{"items": [1, 4, 6], "reason": "brief note explaining why this works", "shoe_recommendation": "chelsea boots", "trend_tags": ["straight-leg", "monochromatic"]}}
 ]"""
 
     raw = ""

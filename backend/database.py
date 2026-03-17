@@ -36,6 +36,9 @@ def run_migrations():
         # Iteration 8 — skin tone + undertone on UserProfile
         ("userprofile", "skin_tone", "TEXT"),
         ("userprofile", "undertone", "TEXT"),
+        # Iteration 9 — online product lookup fields on ClothingItem
+        ("clothingitem", "product_url",        "TEXT"),
+        ("clothingitem", "source_description", "TEXT"),
     ]
 
     with engine.connect() as conn:

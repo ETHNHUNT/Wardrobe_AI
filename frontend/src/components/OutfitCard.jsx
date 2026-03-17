@@ -97,6 +97,42 @@ export default function OutfitCard({ outfit, onSave, onRate, onDelete, isSaved }
           </p>
         )}
 
+        {/* Shoe recommendation */}
+        {outfit.shoe_recommendation && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Shoes →</span>
+            <span
+              className="text-[10px] px-2 py-0.5 rounded-full"
+              style={{
+                backgroundColor: 'rgba(200,169,126,0.06)',
+                color: 'var(--accent)',
+                border: '1px solid rgba(200,169,126,0.15)',
+              }}
+            >
+              {outfit.shoe_recommendation}
+            </span>
+          </div>
+        )}
+
+        {/* Trend tags */}
+        {outfit.trend_tags?.length > 0 && (
+          <div className="flex gap-1.5 flex-wrap">
+            {outfit.trend_tags.map((tag) => (
+              <span
+                key={tag}
+                className="text-[9px] px-2 py-0.5 rounded-full"
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.03)',
+                  color: 'rgba(107,101,96,0.65)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                }}
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+
         {/* Occasion + Season chips */}
         <div className="flex gap-1.5 flex-wrap">
           {outfit.occasion && (

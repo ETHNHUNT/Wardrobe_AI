@@ -7,6 +7,7 @@ import { SKIN_TONES, UNDERTONES, SKIN_TONE_LABELS, UNDERTONE_LABELS } from '../l
 
 const COMMON_BRANDS = ['Zara', 'H&M', 'Uniqlo', 'Mango', 'Gap', 'Levi\'s', 'Nike', 'Adidas', 'Puma', 'Reebok', 'Gucci', 'Armani', 'Calvin Klein', 'Tommy Hilfiger', 'Ralph Lauren', 'Other']
 const SIZE_OPTIONS  = ['XXS', 'XS', 'S', 'S/M', 'M', 'L', 'L/XL', 'XL', 'XXL', 'XXXL', '28', '30', '32', '34', '36', '38', '40', '42']
+const SIZE_CHART_BRANDS = ['Zara', 'Uniqlo', 'H&M', 'Mango']
 
 const API_URL = import.meta.env.VITE_API_URL
 
@@ -64,6 +65,13 @@ export default function Profile() {
   const [focused, setFocused]     = useState(null)
   const { toast } = useToast()
 
+  // Brand Size Finder (v1.3)
+  const [sizeBrand, setSizeBrand]         = useState('')
+  const [sizeGarmentType, setSizeGarmentType] = useState('tops')
+  const [sizeResult, setSizeResult]       = useState(null)
+  const [sizeFetching, setSizeFetching]   = useState(false)
+  const [sizeFetching2, setSizeFetching2] = useState(false) // for AI fetch new brand
+
   useEffect(() => {
     async function loadProfile() {
       try {
@@ -112,6 +120,39 @@ export default function Profile() {
 
   function removeBrandSize(brand) {
     setBrandList((prev) => prev.filter((b) => b.brand !== brand))
+  }
+
+  async function handleSizeLookup() {
+    if (!sizeBrand.trim()) return
+    setSizeFetching(true)
+    setSizeResult(null)
+    try {
+      const { data } = await axios.get(
+        `${API_URL}/knowledge/size-chart/${encodeURIComponent(sizeBrand.trim())}`,
+        { params: { garment_type: sizeGarmentType } }
+      )
+      setSizeResult(data)
+    } catch {
+      setSizeResult({ error: true })
+    } finally {
+      setSizeFetching(false)
+    }
+  }
+
+  async function handleFetchNewBrand() {
+    if (!sizeBrand.trim()) return
+    setSizeFetching2(true)
+    try {
+      const { data } = await axios.post(
+        `${API_URL}/knowledge/size-chart/${encodeURIComponent(sizeBrand.trim())}/fetch`
+      )
+      setSizeResult(data)
+      toast({ message: `Size chart for ${sizeBrand} added!`, type: 'success', duration: 3000 })
+    } catch {
+      toast({ message: 'Could not fetch size chart — try again or add manually.', type: 'error', duration: 3000 })
+    } finally {
+      setSizeFetching2(false)
+    }
   }
 
   async function handleSave(e) {
@@ -344,6 +385,118 @@ export default function Profile() {
           {saving ? 'Saving…' : 'Save Profile'}
         </motion.button>
       </form>
+
+      {/* Brand Size Finder — outside the form so it doesn't submit on Enter */}
+      <div className="px-5 pt-6 pb-10">
+        <h2 className="text-xs uppercase tracking-[0.22em] mb-1.5" style={{ color: 'var(--accent)' }}>
+          Brand Size Finder
+        </h2>
+        <p className="text-[11px] mb-4" style={{ color: 'var(--text-muted)' }}>
+          Find your recommended size based on your saved body measurements
+        </p>
+
+        <div className="flex gap-2 mb-3">
+          <input
+            type="text"
+            list="size-finder-brands"
+            value={sizeBrand}
+            onChange={(e) => setSizeBrand(e.target.value)}
+            onFocus={() => setFocused('size_brand')}
+            onBlur={() => setFocused(null)}
+            placeholder="Brand name…"
+            className="flex-1 rounded-xl px-3 py-2.5 text-sm focus:outline-none"
+            style={{ ...INPUT_STYLE, ...(focused === 'size_brand' ? { border: INPUT_FOCUS_STYLE, boxShadow: INPUT_FOCUS_SHADOW } : {}) }}
+          />
+          <datalist id="size-finder-brands">
+            {SIZE_CHART_BRANDS.map((b) => <option key={b} value={b} />)}
+          </datalist>
+
+          <select
+            value={sizeGarmentType}
+            onChange={(e) => setSizeGarmentType(e.target.value)}
+            className="rounded-xl px-3 py-2.5 text-sm focus:outline-none appearance-none"
+            style={{ ...INPUT_STYLE, minWidth: 90 }}
+          >
+            <option value="tops">Tops</option>
+            <option value="bottoms">Bottoms</option>
+          </select>
+
+          <motion.button
+            type="button"
+            onClick={handleSizeLookup}
+            disabled={!sizeBrand.trim() || sizeFetching}
+            whileTap={{ scale: 0.92 }}
+            className="rounded-xl px-4 py-2.5 text-sm font-medium disabled:opacity-50"
+            style={{ backgroundColor: 'var(--accent-soft)', border: '1px solid rgba(200,169,126,0.2)', color: 'var(--accent)' }}
+          >
+            {sizeFetching ? '…' : 'Find'}
+          </motion.button>
+        </div>
+
+        <AnimatePresence mode="wait">
+          {sizeResult && !sizeResult.error && (
+            <motion.div
+              key="size-result"
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.25 }}
+              className="rounded-2xl p-4"
+              style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid rgba(200,169,126,0.12)' }}
+            >
+              {sizeResult.recommendation?.recommended_size ? (
+                <>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                      {sizeResult.recommendation.brand} — {sizeResult.recommendation.recommended_size}
+                    </span>
+                    {sizeResult.recommendation.next_size && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full"
+                        style={{ backgroundColor: 'rgba(200,169,126,0.08)', color: 'var(--text-muted)', border: '1px solid rgba(200,169,126,0.15)' }}>
+                        or {sizeResult.recommendation.next_size}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                    {sizeResult.recommendation.fit_note}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+                    {sizeResult.recommendation?.fit_note || `No size chart found for ${sizeResult.brand || sizeBrand}.`}
+                  </p>
+                  {sizeResult.available_brands?.length > 0 && (
+                    <p className="text-[11px]" style={{ color: 'var(--text-muted)', opacity: 0.7 }}>
+                      Available: {sizeResult.available_brands.join(', ')}
+                    </p>
+                  )}
+                  <motion.button
+                    type="button"
+                    onClick={handleFetchNewBrand}
+                    disabled={sizeFetching2}
+                    whileTap={{ scale: 0.95 }}
+                    className="mt-3 text-xs px-3 py-1.5 rounded-lg disabled:opacity-50"
+                    style={{ border: '1px solid rgba(200,169,126,0.25)', color: 'var(--accent)' }}
+                  >
+                    {sizeFetching2 ? 'Fetching via AI…' : `Fetch ${sizeBrand} chart via AI`}
+                  </motion.button>
+                </>
+              )}
+            </motion.div>
+          )}
+          {sizeResult?.error && (
+            <motion.div
+              key="size-error"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="text-xs p-3 rounded-xl"
+              style={{ backgroundColor: 'rgba(248,113,113,0.06)', color: 'var(--danger)' }}
+            >
+              Could not fetch size chart. Check backend connection.
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
     </div>
   )

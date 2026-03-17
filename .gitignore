@@ -12,7 +12,10 @@ venv/
 backend/wardrobe.db
 
 # Uploaded images (local filesystem storage)
-backend/data/
+backend/data/images/
+
+# SQLite and runtime data
+backend/data/*.db
 
 # Test artifacts
 test_shirt.jpg

@@ -19,7 +19,7 @@ from models.item import ClothingItem     # noqa: F401
 from models.outfit import SavedOutfit    # noqa: F401
 
 from database import create_db_and_tables, run_migrations
-from routers import profile, items, outfits, shop
+from routers import profile, items, outfits, shop, knowledge
 
 
 @asynccontextmanager
@@ -75,3 +75,4 @@ app.include_router(profile.router)
 app.include_router(items.router)
 app.include_router(outfits.router)
 app.include_router(shop.router)
+app.include_router(knowledge.router)
