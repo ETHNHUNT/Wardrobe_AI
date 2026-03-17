@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Check, Camera, Eye, Sparkles, CheckCircle2 } from 'lucide-react'
+import { Check, Camera, Eye, Sparkles, CheckCircle2, Globe } from 'lucide-react'
 
 /**
  * PhaseIndicator — shows progress through AddItem's phase state machine.
@@ -9,10 +9,11 @@ import { Check, Camera, Eye, Sparkles, CheckCircle2 } from 'lucide-react'
  */
 
 const STEPS = [
-  { id: 'shoot',   label: 'Photo',   phases: ['idle', 'camera'],                Icon: Camera },
-  { id: 'preview', label: 'Preview', phases: ['previewing'],                     Icon: Eye },
-  { id: 'tagging', label: 'AI Tag',  phases: ['uploading', 'manual_form'],       Icon: Sparkles },
-  { id: 'done',    label: 'Done',    phases: ['done'],                           Icon: CheckCircle2 },
+  { id: 'shoot',         label: 'Photo',   phases: ['idle', 'camera'],              Icon: Camera },
+  { id: 'preview',       label: 'Preview', phases: ['previewing'],                  Icon: Eye },
+  { id: 'tagging',       label: 'AI Tag',  phases: ['uploading', 'manual_form'],    Icon: Sparkles },
+  { id: 'online_lookup', label: 'Online',  phases: ['online_lookup'],               Icon: Globe },
+  { id: 'done',          label: 'Done',    phases: ['done'],                        Icon: CheckCircle2 },
 ]
 
 function stepState(step, currentPhase) {

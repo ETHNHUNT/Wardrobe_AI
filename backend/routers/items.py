@@ -16,6 +16,7 @@ from services.ai_service import tag_clothing_image, infer_garment_measurements
 from services.product_lookup_service import lookup_product, lookup_from_label_photo
 from services.color_service import extract_dominant_color_from_image
 from services.fit_service import verify_garment_fit
+from services.product_search_service import search_product_online
 from models.user import UserProfile
 from routers.shop import invalidate_gaps_cache
 
@@ -36,6 +37,9 @@ class ClothingItemUpdate(BaseModel):
     # Iteration 1: new garment spec fields
     material: str | None = None
     garment_measurements: dict | None = None  # e.g. {"chest_width_cm": 54, "body_length_cm": 72}
+    # Iteration 9: online product lookup (manual override)
+    product_url: str | None = None
+    source_description: str | None = None
 
 
 def _apply_tags(item: ClothingItem, tags: dict, *, preserve_existing: bool = False) -> None:
@@ -149,6 +153,29 @@ async def add_item(
                 session.add(item)
                 session.commit()
                 session.refresh(item)
+
+        # Iteration 9: Online product lookup — only if brand is known
+        # Short timeout (5s) so it never significantly delays the response
+        if item.brand:
+            try:
+                tags_list = json.loads(item.tags or "[]")
+                colors_list = json.loads(item.colors or "[]")
+                lookup_result = await search_product_online(
+                    brand=item.brand,
+                    category=item.category,
+                    tags=tags_list,
+                    colors=colors_list,
+                )
+                if lookup_result:
+                    if lookup_result.get("product_url"):
+                        item.product_url = lookup_result["product_url"]
+                    if lookup_result.get("source_description"):
+                        item.source_description = lookup_result["source_description"]
+                    session.add(item)
+                    session.commit()
+                    session.refresh(item)
+            except Exception:
+                pass  # Never crash the add flow for a lookup failure
 
     except Exception:
         # Roll back DB changes and clean up any files on failure
