@@ -1,6 +1,6 @@
-import { useRef } from 'react'
-import { motion } from 'framer-motion'
-import { Star, Trash2, BookmarkPlus } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Star, Trash2, BookmarkPlus, CheckCircle2, TrendingUp, Palette, ChevronDown } from 'lucide-react'
 import { gsap } from 'gsap'
 
 const API_URL = import.meta.env.VITE_API_URL
@@ -45,6 +45,8 @@ function StarRating({ rating, outfitId, onRate, disabled }) {
 
 export default function OutfitCard({ outfit, onSave, onRate, onDelete, isSaved }) {
   const items = outfit.items ?? []
+  const [styleOpen, setStyleOpen] = useState(false)
+  const hasStylingGuide = (outfit.styling_tips?.length > 0) || outfit.color_reason
 
   return (
     <motion.div
@@ -116,10 +118,12 @@ export default function OutfitCard({ outfit, onSave, onRate, onDelete, isSaved }
 
         {/* Trend tags */}
         {outfit.trend_tags?.length > 0 && (
-          <div className="flex gap-1.5 flex-wrap">
+          <div className="flex gap-1.5 flex-wrap items-center">
+            <TrendingUp size={10} strokeWidth={2} style={{ color: 'rgba(107,101,96,0.5)' }} />
             {outfit.trend_tags.map((tag) => (
               <span
                 key={tag}
+                title="2026 trend"
                 className="text-[9px] px-2 py-0.5 rounded-full"
                 style={{
                   backgroundColor: 'rgba(255,255,255,0.03)',
@@ -130,6 +134,64 @@ export default function OutfitCard({ outfit, onSave, onRate, onDelete, isSaved }
                 {tag}
               </span>
             ))}
+          </div>
+        )}
+
+        {/* Styling Guide — collapsible */}
+        {hasStylingGuide && (
+          <div>
+            <button
+              onClick={() => setStyleOpen((v) => !v)}
+              className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider"
+              style={{ color: 'var(--accent)' }}
+            >
+              <Palette size={11} strokeWidth={2} />
+              Styling Guide
+              <motion.span
+                animate={{ rotate: styleOpen ? 180 : 0 }}
+                transition={{ duration: 0.2 }}
+                className="inline-block"
+              >
+                <ChevronDown size={11} strokeWidth={2} />
+              </motion.span>
+            </button>
+
+            <AnimatePresence>
+              {styleOpen && (
+                <motion.div
+                  key="style-guide"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="overflow-hidden"
+                >
+                  <div
+                    className="mt-2 rounded-xl p-3 space-y-2"
+                    style={{
+                      backgroundColor: 'rgba(200,169,126,0.05)',
+                      border: '1px solid rgba(200,169,126,0.12)',
+                    }}
+                  >
+                    {outfit.color_reason && (
+                      <p className="text-[10px] leading-relaxed" style={{ color: 'rgba(200,169,126,0.8)' }}>
+                        <span className="font-semibold">Colors: </span>{outfit.color_reason}
+                      </p>
+                    )}
+                    {outfit.styling_tips?.length > 0 && (
+                      <ul className="space-y-1">
+                        {outfit.styling_tips.map((tip, i) => (
+                          <li key={i} className="flex items-start gap-1.5 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                            <CheckCircle2 size={11} strokeWidth={2} className="mt-0.5 shrink-0" style={{ color: 'var(--accent)' }} />
+                            {tip}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
 

@@ -4,6 +4,10 @@ from services.compatibility_service import score_item_compatibility, build_candi
 
 OCCASIONS = ["casual", "work", "formal", "sport", "outdoor"]
 
+_TOPS_CAT = {"tshirt", "shirt", "polo", "jacket", "hoodie", "sweater", "blazer", "coat", "top"}
+_BOTTOMS_CAT = {"jeans", "chinos", "trousers", "shorts"}
+_SHOES_CAT = {"shoes", "sneakers", "boots", "formal_shoes"}
+
 # Size thresholds for tops (chest_cm) and bottoms (waist_cm)
 _SIZE_THRESHOLDS = [
     (88, "XS"),
@@ -91,6 +95,61 @@ def build_google_shopping_url(query: str) -> str:
     return f"https://www.google.com/shopping/search?q={quote_plus(query)}"
 
 
+def _build_outfit_ideas(candidate_name: str, candidate_category: str, matching_items: list[dict]) -> list[dict]:
+    """Build 2-3 concrete outfit ideas pairing the new suggested item with existing wardrobe items.
+
+    Pairs a top with a bottom (and optionally shoes) to form complete outfit ideas.
+    Returns up to 3 ideas, each with a list of item dicts and a brief description.
+    """
+    ideas = []
+    tops = [m for m in matching_items if m.get("category") in _TOPS_CAT]
+    bottoms = [m for m in matching_items if m.get("category") in _BOTTOMS_CAT]
+    shoes = [m for m in matching_items if m.get("category") in _SHOES_CAT]
+
+    def _colors(item: dict) -> str:
+        try:
+            cols = json.loads(item.get("colors", "[]") or "[]")
+            return cols[0] if cols else item.get("category", "")
+        except (json.JSONDecodeError, TypeError):
+            return item.get("category", "")
+
+    def _label(item: dict) -> str:
+        return item.get("brand") or item.get("category", "item")
+
+    if candidate_category in _TOPS_CAT:
+        # New item is a top — pair with each bottom
+        for bottom in bottoms[:3]:
+            pair_items = [bottom]
+            desc = f"{candidate_name} + {_colors(bottom)} {_label(bottom)}"
+            if shoes:
+                pair_items.append(shoes[0])
+                desc += f" + {_label(shoes[0])}"
+            ideas.append({"items": pair_items, "description": desc})
+    elif candidate_category in _BOTTOMS_CAT:
+        # New item is a bottom — pair with each top
+        for top in tops[:3]:
+            pair_items = [top]
+            desc = f"{_colors(top)} {_label(top)} + {candidate_name}"
+            if shoes:
+                pair_items.append(shoes[0])
+                desc += f" + {_label(shoes[0])}"
+            ideas.append({"items": pair_items, "description": desc})
+    elif candidate_category in _SHOES_CAT:
+        # New item is shoes — pair top+bottom together
+        for i, top in enumerate(tops[:2]):
+            if i < len(bottoms):
+                bottom = bottoms[i]
+                pair_items = [top, bottom]
+                desc = f"{_colors(top)} {_label(top)} + {_colors(bottom)} {_label(bottom)} + {candidate_name}"
+                ideas.append({"items": pair_items, "description": desc})
+    else:
+        # Generic: just list first 3 matching items
+        for m in matching_items[:3]:
+            ideas.append({"items": [m], "description": f"{_label(m)} with {candidate_name}"})
+
+    return ideas[:3]
+
+
 def build_suggestions(
     gaps: list[dict],
     profile: dict,
@@ -151,6 +210,9 @@ def build_suggestions(
             # Versatility score: fraction of wardrobe this pairs with
             versatility_score = round(compat["match_count"] / total_wardrobe, 2)
 
+            # Outfit ideas: concrete combinations of new item with existing wardrobe
+            outfit_ideas = _build_outfit_ideas(missing_item, category, compat["matching_items"])
+
             suggestions.append({
                 "item": missing_item,
                 "occasion": occasion,
@@ -163,6 +225,7 @@ def build_suggestions(
                 "matching_items": compat["matching_items"],
                 "recommended_colors": recommended_colors,
                 "versatility_score": versatility_score,
+                "outfit_ideas": outfit_ideas,
             })
 
     # Sort: priority first, then by compatibility score descending

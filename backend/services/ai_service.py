@@ -234,10 +234,12 @@ async def generate_outfits(
     wear_frequency: dict[int, int] | None = None,
     shoe_pairing_context: str | None = None,
     trend_context: str | None = None,
+    style_rules_context: str | None = None,
 ) -> list[dict]:
     """
     Generate 3 outfit suggestions via Ollama (primary) or Gemini (fallback).
-    Returns list of {"items": [...], "reason": "...", "shoe_recommendation": "...", "trend_tags": [...]} dicts,
+    Returns list of {"items": [...], "reason": "...", "styling_tips": [...],
+    "color_reason": "...", "shoe_recommendation": "...", "trend_tags": [...]} dicts,
     or [] on failure.
     """
     past_context = ""
@@ -266,8 +268,12 @@ async def generate_outfits(
     if trend_context:
         trend_section = f"\nFashion context for {season}: {trend_context}\n"
 
+    style_rules_section = ""
+    if style_rules_context:
+        style_rules_section = f"\n{style_rules_context}\n"
+
     prompt = f"""You are a personal stylist for an Indian man. Suggest exactly 3 outfits for occasion: {occasion}, season: {season}.
-{skin_section}{past_context}{harmony_section}{wear_section}{shoe_section}{trend_section}
+{skin_section}{past_context}{harmony_section}{wear_section}{shoe_section}{trend_section}{style_rules_section}
 Wardrobe: {json.dumps(_slim_items(items))}
 
 Rules:
@@ -280,12 +286,14 @@ Rules:
 7. Vary item usage — prefer least-worn items.
 8. Include shoe_recommendation per outfit: specific shoe type to complete the look (not an item ID from the wardrobe).
 9. Add trend_tags: 1-3 current style trends or keywords this outfit incorporates.
+10. Add styling_tips: 2-3 specific how-to-wear instructions (e.g. "Tuck the shirt for a cleaner silhouette", "Roll up sleeves to show cuff detail", "Leave jacket unbuttoned for a relaxed layer").
+11. Add color_reason: 1 sentence explaining why the color combination works (e.g. "Navy and white follow the 60-30-10 rule — navy grounds the look, white shirt is the focal point").
 
 Return ONLY JSON array:
 [
-  {{"items": [1, 3], "reason": "brief note explaining why this works", "shoe_recommendation": "white chunky sneakers", "trend_tags": ["relaxed fit", "earth tones"]}},
-  {{"items": [2, 5, 7], "reason": "brief note explaining why this works", "shoe_recommendation": "loafers", "trend_tags": ["quiet luxury"]}},
-  {{"items": [1, 4, 6], "reason": "brief note explaining why this works", "shoe_recommendation": "chelsea boots", "trend_tags": ["straight-leg", "monochromatic"]}}
+  {{"items": [1, 3], "reason": "brief note explaining why this works", "styling_tips": ["Tuck the shirt for a clean silhouette", "Roll sleeves to the elbow"], "color_reason": "Navy and white create a classic high-contrast pairing.", "shoe_recommendation": "white chunky sneakers", "trend_tags": ["relaxed fit", "earth tones"]}},
+  {{"items": [2, 5, 7], "reason": "brief note explaining why this works", "styling_tips": ["Leave top button undone for a relaxed feel"], "color_reason": "Earth tones create a monochromatic depth.", "shoe_recommendation": "loafers", "trend_tags": ["quiet luxury"]}},
+  {{"items": [1, 4, 6], "reason": "brief note explaining why this works", "styling_tips": ["Pair fitted top with relaxed bottom for proportion balance"], "color_reason": "Olive and black follow a neutral foundation with subtle contrast.", "shoe_recommendation": "chelsea boots", "trend_tags": ["straight-leg", "monochromatic"]}}
 ]"""
 
     raw = ""
