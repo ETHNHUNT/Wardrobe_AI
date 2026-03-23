@@ -20,6 +20,11 @@ backend/data/*.db
 # Test artifacts
 test_shirt.jpg
 
+# User testing simulation outputs (downloaded images + generated reports are local only)
+output/test_images/
+output/simulation_log.txt
+output/user_testing_results.json
+
 # Frontend
 frontend/node_modules/
 frontend/dist/
